@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#1a73e8">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Presensi Guru</title>
+  <link rel="stylesheet" href="assets/css/style.css">
+  <!-- HTML5-QRCode Library -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+</head>
+<body>
+
+<!-- ============================================================
+     LOADING SCREEN
+     ============================================================ -->
+<div id="loading-screen">
+  <img id="loading-logo" class="loading-logo" src="" alt="Logo" style="display:none"
+       onerror="this.style.display='none';document.getElementById('loading-logo-placeholder').style.display='flex'">
+  <div id="loading-logo-placeholder" class="loading-logo-placeholder">🏫</div>
+  <div id="loading-title" class="loading-title">Sistem Presensi</div>
+  <div class="loading-sub">Memuat data...</div>
+  <div class="loading-bar"><div class="loading-bar-fill"></div></div>
+</div>
+
+<!-- ============================================================
+     TOAST CONTAINER
+     ============================================================ -->
+<div id="toast-container" class="toast-container"></div>
+
+<!-- ============================================================
+     HEADER
+     ============================================================ -->
+<header class="app-header">
+  <img id="header-logo" class="header-logo" src="" alt="Logo" style="display:none"
+       onerror="this.style.display='none';document.getElementById('header-logo-placeholder').style.display='flex'">
+  <div id="header-logo-placeholder" class="header-logo-placeholder">🏫</div>
+  <div class="header-info">
+    <div id="header-title" class="header-title">Sistem Presensi</div>
+    <div id="clock-tanggal" class="header-sub">--/--/----</div>
+  </div>
+  <button class="header-btn" onclick="openSettingModal()" title="Pengaturan">⚙️</button>
+</header>
+
+<!-- ============================================================
+     HALAMAN HOME - DAFTAR KEHADIRAN
+     ============================================================ -->
+<div id="page-home" class="page">
+  <!-- Banner Tanggal & Jam -->
+  <div class="date-banner">
+    <div id="clock-hari" class="hari">Memuat...</div>
+    <div id="clock-jam" class="jam">--:--:--</div>
+    <div id="clock-tanggal-banner" class="tanggal">--/--/----</div>
+  </div>
+
+  <!-- Statistik -->
+  <div id="stats-container" class="stats-row">
+    <div class="stat-card stat-hadir"><div class="stat-num">-</div><div class="stat-label">Hadir</div></div>
+    <div class="stat-card stat-telat"><div class="stat-num">-</div><div class="stat-label">Terlambat</div></div>
+    <div class="stat-card stat-absen"><div class="stat-num">-</div><div class="stat-label">Belum/Absen</div></div>
+    <div class="stat-card stat-total"><div class="stat-num">-</div><div class="stat-label">Total</div></div>
+  </div>
+
+  <!-- Daftar Guru -->
+  <div class="section-title">📋 Daftar Kehadiran Hari Ini</div>
+  <div id="guru-list-container" class="guru-list">
+    <div class="empty-state">
+      <div class="spinner spinner-dark" style="margin:0 auto 12px;"></div>
+      <p>Memuat data...</p>
+    </div>
+  </div>
+
+  <!-- Tombol Refresh -->
+  <div style="padding:8px 16px 16px">
+    <button class="btn btn-outline" onclick="loadPresensiHariIni()" style="font-size:.85rem;padding:10px">
+      🔄 Perbarui Data
+    </button>
+  </div>
+</div>
+
+<!-- ============================================================
+     HALAMAN SCAN BARCODE
+     ============================================================ -->
+<div id="page-scan" class="page">
+  <div class="scan-page">
+    <div class="scan-container">
+      <div class="scan-header">
+        <h2>📷 Scan Barcode</h2>
+        <p>Arahkan kamera ke barcode kartu guru</p>
+      </div>
+
+      <!-- Tab Mode Scan -->
+      <div class="scan-mode-tabs">
+        <button class="scan-tab active" data-scan-mode="masuk">
+          🟢 Absen Masuk
+        </button>
+        <button class="scan-tab" data-scan-mode="pulang">
+          🔵 Absen Pulang
+        </button>
+      </div>
+
+      <!-- Kamera -->
+      <div id="reader"></div>
+    </div>
+
+    <!-- Hasil Scan -->
+    <div id="scan-result-card" class="scan-result-card"></div>
+  </div>
+</div>
+
+<!-- ============================================================
+     HALAMAN ABSEN MANUAL
+     ============================================================ -->
+<div id="page-manual" class="page">
+  <div class="manual-page">
+    <div class="manual-card">
+      <h3>📝 Absen Manual</h3>
+
+      <div class="form-group">
+        <label class="form-label">Pilih Guru</label>
+        <select id="select-guru-manual" class="form-control">
+          <option value="">-- Pilih Guru --</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Keterangan</label>
+        <div class="keterangan-grid">
+          <button class="ket-btn" data-ket="IJIN">
+            <span class="ket-icon">📋</span>
+            <span class="ket-label">Ijin</span>
+          </button>
+          <button class="ket-btn" data-ket="SAKIT">
+            <span class="ket-icon">🤒</span>
+            <span class="ket-label">Sakit</span>
+          </button>
+          <button class="ket-btn" data-ket="ALPA">
+            <span class="ket-icon">❌</span>
+            <span class="ket-label">Alpa</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Info Waktu -->
+      <div style="background:var(--bg);border-radius:var(--radius-sm);padding:12px;margin-bottom:16px;font-size:.82rem;color:var(--text-muted)">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+          <span>📅 Tanggal</span>
+          <strong id="manual-tanggal" style="color:var(--text)">--/--/----</strong>
+        </div>
+        <div style="display:flex;justify-content:space-between">
+          <span>🕐 Jam Dicatat</span>
+          <strong id="manual-jam" style="color:var(--text)">--:--</strong>
+        </div>
+      </div>
+
+      <button id="btn-submit-manual" class="btn btn-warning" onclick="submitAbsenManual()">
+        💾 Simpan Absen
+      </button>
+    </div>
+
+    <!-- Hasil -->
+    <div id="manual-result" class="manual-card" style="display:none"></div>
+  </div>
+</div>
+
+<!-- ============================================================
+     HALAMAN ABSEN KEPULANGAN
+     ============================================================ -->
+<div id="page-pulang" class="page">
+  <div class="pulang-page">
+    <div class="manual-card">
+      <h3>🏠 Absen Kepulangan</h3>
+
+      <div style="background:#e8f0fe;border-radius:var(--radius-sm);padding:12px;margin-bottom:16px;font-size:.82rem;color:#1a73e8;display:flex;gap:8px;align-items:flex-start">
+        <span>ℹ️</span>
+        <span>Gunakan menu ini untuk mencatat kepulangan guru secara manual, atau gunakan Scan Barcode untuk kepulangan otomatis.</span>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Pilih Guru</label>
+        <select id="select-guru-pulang" class="form-control">
+          <option value="">-- Pilih Guru --</option>
+        </select>
+      </div>
+
+      <!-- Info Waktu -->
+      <div style="background:var(--bg);border-radius:var(--radius-sm);padding:12px;margin-bottom:16px;font-size:.82rem;color:var(--text-muted)">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+          <span>📅 Tanggal</span>
+          <strong id="pulang-tanggal" style="color:var(--text)">--/--/----</strong>
+        </div>
+        <div style="display:flex;justify-content:space-between">
+          <span>🕐 Jam Pulang</span>
+          <strong id="pulang-jam" style="color:var(--text)">--:--</strong>
+        </div>
+      </div>
+
+      <button id="btn-submit-pulang" class="btn btn-primary" onclick="submitAbsenPulang()">
+        🏠 Catat Kepulangan
+      </button>
+    </div>
+
+    <!-- Hasil -->
+    <div id="pulang-result" class="manual-card" style="display:none"></div>
+  </div>
+</div>
+
+<!-- ============================================================
+     BOTTOM NAVIGATION
+     ============================================================ -->
+<nav class="bottom-nav">
+  <!-- Menu Kiri: Absen Manual -->
+  <button class="nav-item" data-nav="manual">
+    <span class="nav-icon">📝</span>
+    <span>Manual</span>
+  </button>
+
+  <!-- Menu Tengah: Scan Barcode (utama) -->
+  <div class="nav-center">
+    <button class="nav-center-btn" data-nav="scan" title="Scan Barcode">
+      📷
+    </button>
+    <span class="nav-center-label">Scan</span>
+  </div>
+
+  <!-- Menu Kanan: Absen Pulang -->
+  <button class="nav-item" data-nav="pulang">
+    <span class="nav-icon">🏠</span>
+    <span>Pulang</span>
+  </button>
+</nav>
+
+<!-- ============================================================
+     MODAL PENGATURAN
+     ============================================================ -->
+<div id="modal-setting" class="modal-overlay" onclick="if(event.target===this)closeSettingModal()">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">⚙️ Pengaturan API</div>
+
+    <div class="form-group">
+      <label class="form-label">URL Web App Google Apps Script</label>
+      <input type="url" id="input-api-url" class="form-control"
+             placeholder="https://script.google.com/macros/s/AKfycbxWQ-Q9TKP7TJs_BZw27HUrcUodMwoXedAq-fGQek_v6A88xx6n4eQeVQ9leDgskYTlDw/exec">
+    </div>
+
+    <div style="background:#fef7e0;border-radius:var(--radius-sm);padding:12px;margin-bottom:16px;font-size:.8rem;color:#b06000">
+      <strong>📌 Cara mendapatkan URL:</strong><br>
+      1. Buka Google Spreadsheet<br>
+      2. Extensions → Apps Script<br>
+      3. Paste kode dari <code>setup.gs</code><br>
+      4. Jalankan <code>setupSpreadsheet()</code><br>
+      5. Deploy → New Deployment → Web App<br>
+      6. Execute as: <strong>Me</strong>, Access: <strong>Anyone</strong><br>
+      7. Salin URL dan paste di sini
+    </div>
+
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-outline" onclick="closeSettingModal()" style="flex:1">Batal</button>
+      <button class="btn btn-primary" onclick="saveApiUrl()" style="flex:1">💾 Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     SCRIPT
+     ============================================================ -->
+<script src="assets/js/app.js"></script>
+<script>
+  // Update jam di halaman manual & pulang secara real-time
+  setInterval(() => {
+    const now = WaktuID.now();
+    const tgl = WaktuID.formatTanggal(now);
+    const jam = WaktuID.formatJam(now);
+
+    const elMT = document.getElementById('manual-tanggal');
+    const elMJ = document.getElementById('manual-jam');
+    const elPT = document.getElementById('pulang-tanggal');
+    const elPJ = document.getElementById('pulang-jam');
+    const elCB = document.getElementById('clock-tanggal-banner');
+
+    if (elMT) elMT.textContent = tgl;
+    if (elMJ) elMJ.textContent = jam;
+    if (elPT) elPT.textContent = tgl;
+    if (elPJ) elPJ.textContent = jam;
+    if (elCB) elCB.textContent = tgl;
+  }, 1000);
+</script>
+</body>
+</html>
