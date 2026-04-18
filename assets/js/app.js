@@ -54,16 +54,38 @@ const WaktuID = {
 // ============================================================
 async function apiCall(action, params = {}) {
   const url = CONFIG.API_URL;
-  if (!url) throw new Error('URL API belum dikonfigurasi. Buka Pengaturan untuk mengisi URL Web App.');
+  if (!url) {
+    throw new Error('__NO_URL__');
+  }
 
-  const body = JSON.stringify({ action, ...params });
-  const res  = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body
-  });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
+  // Google Apps Script Web App paling reliable dengan GET + query string
+  // untuk menghindari masalah CORS preflight
+  const qParams = new URLSearchParams({ action, ...params });
+  const fullUrl = url + '?' + qParams.toString();
+
+  let res;
+  try {
+    res = await fetch(fullUrl, {
+      method: 'GET',
+      redirect: 'follow'
+    });
+  } catch (networkErr) {
+    if (!navigator.onLine) {
+      throw new Error('Tidak ada koneksi internet. Periksa jaringan Anda.');
+    }
+    throw new Error('Tidak dapat terhubung ke server. Pastikan URL Web App sudah benar dan sudah di-deploy dengan akses "Anyone".');
+  }
+
+  if (!res.ok) throw new Error('Server error: HTTP ' + res.status);
+
+  let json;
+  try {
+    const text = await res.text();
+    json = JSON.parse(text);
+  } catch {
+    throw new Error('Respons server tidak valid. Pastikan URL adalah URL Web App Google Apps Script yang benar.');
+  }
+  return json;
 }
 
 // ============================================================
@@ -139,6 +161,20 @@ async function loadPresensiHariIni() {
   const container = document.getElementById('guru-list-container');
   const statsEl   = document.getElementById('stats-container');
   if (!container) return;
+
+  // Cek URL dulu sebelum loading
+  if (!CONFIG.API_URL) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">&#x2699;&#xFE0F;</div>
+        <p style="font-weight:700;color:var(--text);margin-bottom:8px">URL API belum dikonfigurasi</p>
+        <p style="font-size:.82rem;margin-bottom:16px">Klik tombol di bawah untuk mengisi URL Web App Google Apps Script.</p>
+        <button class="btn btn-primary" style="width:auto;padding:10px 24px" onclick="openSettingModal()">
+          Buka Pengaturan
+        </button>
+      </div>`;
+    return;
+  }
 
   container.innerHTML = `
     <div class="empty-state">
@@ -226,11 +262,29 @@ async function loadPresensiHariIni() {
     });
 
   } catch (err) {
+    // URL kosong
+    if (err.message === '__NO_URL__') {
+      container.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-icon">&#x2699;&#xFE0F;</div>
+          <p style="font-weight:700;color:var(--text);margin-bottom:8px">URL API belum dikonfigurasi</p>
+          <p style="font-size:.82rem;margin-bottom:16px">Klik tombol di bawah untuk mengisi URL Web App Google Apps Script.</p>
+          <button class="btn btn-primary" style="width:auto;padding:10px 24px" onclick="openSettingModal()">
+            Buka Pengaturan
+          </button>
+        </div>`;
+      return;
+    }
+
     container.innerHTML = `
       <div class="empty-state">
-        <div class="empty-icon">⚠️</div>
-        <p>${err.message}</p>
-        <button class="btn btn-primary btn-sm" style="margin-top:12px;width:auto;padding:8px 20px" onclick="loadPresensiHariIni()">Coba Lagi</button>
+        <div class="empty-icon">&#x26A0;&#xFE0F;</div>
+        <p style="font-weight:700;color:var(--danger);margin-bottom:8px">Gagal memuat data</p>
+        <p style="font-size:.82rem;margin-bottom:16px">${err.message}</p>
+        <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+          <button class="btn btn-primary btn-sm" onclick="loadPresensiHariIni()">Coba Lagi</button>
+          <button class="btn btn-outline btn-sm" onclick="openSettingModal()">Pengaturan</button>
+        </div>
       </div>`;
   }
 }
