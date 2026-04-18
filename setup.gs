@@ -456,14 +456,55 @@ function loginAdmin(password) {
 
 // ============================================================
 // WEB APP ENTRY POINT - doGet
+// Semua request dikirim via GET + query parameter
+// untuk menghindari masalah CORS preflight
 // ============================================================
 function doGet(e) {
-  return HtmlService.createHtmlOutput('<h2>Presensi API aktif</h2>')
-    .setTitle('Presensi API');
+  // Jika tidak ada parameter action, tampilkan halaman info
+  if (!e || !e.parameter || !e.parameter.action) {
+    return HtmlService.createHtmlOutput(
+      '<h2 style="font-family:sans-serif;color:#1a73e8">&#x2705; Presensi API Aktif</h2>' +
+      '<p style="font-family:sans-serif">Web App berjalan dengan baik. Salin URL ini ke pengaturan aplikasi.</p>'
+    ).setTitle('Presensi API');
+  }
+
+  const action = e.parameter.action;
+  let result;
+
+  try {
+    switch (action) {
+      case 'absenMasuk':
+        result = absenMasuk(e.parameter.idBarcode);
+        break;
+      case 'absenPulang':
+        result = absenPulang(e.parameter.idBarcode);
+        break;
+      case 'absenManual':
+        result = absenManual(e.parameter.idBarcode, e.parameter.keterangan);
+        break;
+      case 'getPresensiHariIni':
+        result = getPresensiHariIni();
+        break;
+      case 'getDataGuru':
+        result = getDataGuru();
+        break;
+      case 'loginAdmin':
+        result = loginAdmin(e.parameter.password);
+        break;
+      default:
+        result = { success: false, message: 'Action tidak dikenal: ' + action };
+    }
+  } catch (err) {
+    result = { success: false, message: err.message };
+  }
+
+  return ContentService
+    .createTextOutput(JSON.stringify(result))
+    .setMimeType(ContentService.MimeType.JSON);
 }
 
 // ============================================================
-// WEB APP ENTRY POINT - doPost (API utama)
+// WEB APP ENTRY POINT - doPost (opsional, fallback)
 // ============================================================
 function doPost(e) {
   // Catatan: CORS ditangani otomatis oleh Google saat deploy
