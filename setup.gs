@@ -172,9 +172,10 @@ function getSetting(key) {
       if (val instanceof Date) {
         // Hitung total menit dari fraksi hari
         // getTime() pada epoch 1899-12-30 memberikan milidetik sejak 1899-12-30 00:00 UTC
-        const EPOCH_1899 = -2209161600000; // ms dari Unix epoch ke 1899-12-30 00:00 UTC
+        const EPOCH_1899  = -2209161600000; // ms dari Unix epoch ke 1899-12-30 00:00 UTC
+        const OFFSET_WIB  = 7 * 60;        // UTC+7 dalam menit
         const msFromEpoch = val.getTime() - EPOCH_1899;
-        const totalMenit  = Math.round(msFromEpoch / 60000);
+        const totalMenit  = Math.round(msFromEpoch / 60000) + OFFSET_WIB;
         const h  = String(Math.floor(totalMenit / 60) % 24).padStart(2, '0');
         const mn = String(totalMenit % 60).padStart(2, '0');
         return h + ':' + mn;
@@ -218,9 +219,10 @@ function nilaiJamKeString(val) {
 
   // Kasus 2: objek Date (epoch 1899-12-30 untuk time-only cell)
   if (val instanceof Date) {
-    const EPOCH_1899 = -2209161600000; // ms dari Unix epoch ke 1899-12-30 00:00 UTC
+    const EPOCH_1899  = -2209161600000; // ms dari Unix epoch ke 1899-12-30 00:00 UTC
+    const OFFSET_WIB  = 7 * 60;        // UTC+7 dalam menit
     const msFromEpoch = val.getTime() - EPOCH_1899;
-    const totalMenit  = Math.round(msFromEpoch / 60000);
+    const totalMenit  = Math.round(msFromEpoch / 60000) + OFFSET_WIB;
     const h  = String(Math.floor(totalMenit / 60) % 24).padStart(2, '0');
     const mn = String(totalMenit % 60).padStart(2, '0');
     return h + ':' + mn;
@@ -228,7 +230,8 @@ function nilaiJamKeString(val) {
 
   // Kasus 3: angka desimal fraksi hari (misal 0.291666 = 07:00)
   if (typeof val === 'number') {
-    const totalMenit = Math.round(val * 24 * 60);
+    const OFFSET_WIB = 7 * 60; // UTC+7 dalam menit
+    const totalMenit = Math.round(val * 24 * 60) + OFFSET_WIB;
     const h  = String(Math.floor(totalMenit / 60) % 24).padStart(2, '0');
     const mn = String(totalMenit % 60).padStart(2, '0');
     return h + ':' + mn;
