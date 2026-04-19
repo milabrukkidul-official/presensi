@@ -763,3 +763,145 @@ select.form-control {
 .chip-masuk  { background: #e6f4ea; color: #137333; }
 .chip-pulang { background: #e8f0fe; color: #1a73e8; }
 .chip-belum  { background: #f1f3f4; color: #9aa0a6; }
+
+/* ============================================================
+   CETAK BAR
+   ============================================================ */
+.cetak-bar {
+  margin: 12px 16px 0;
+  background: var(--card);
+  border-radius: var(--radius-sm);
+  padding: 14px;
+  box-shadow: var(--shadow);
+  border-left: 4px solid var(--success);
+}
+.cetak-bar-title {
+  font-size: .8rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+}
+.cetak-btn-row {
+  display: flex;
+  gap: 8px;
+}
+.cetak-btn {
+  flex: 1;
+  padding: 10px 6px;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: .78rem;
+  font-weight: 700;
+  font-family: var(--font);
+  cursor: pointer;
+  transition: transform .15s, box-shadow .15s;
+}
+.cetak-btn:active { transform: scale(.96); }
+.cetak-harian   { background: #e8f0fe; color: #1a73e8; }
+.cetak-mingguan { background: #e6f4ea; color: #137333; }
+.cetak-bulanan  { background: #fef7e0; color: #b06000; }
+
+/* ============================================================
+   ADMIN MENU GRID
+   ============================================================ */
+.admin-menu-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.admin-menu-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 18px 8px;
+  background: var(--bg);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background .2s, border-color .2s, transform .15s;
+  font-family: var(--font);
+}
+.admin-menu-item:hover  { background: #e8f0fe; border-color: var(--primary); }
+.admin-menu-item:active { transform: scale(.96); }
+.admin-menu-icon  { font-size: 1.8rem; }
+.admin-menu-label { font-size: .78rem; font-weight: 700; color: var(--text); text-align: center; }
+
+/* ============================================================
+   INFO BOXES
+   ============================================================ */
+.info-box-blue {
+  background: #e8f0fe;
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  margin-bottom: 16px;
+  font-size: .82rem;
+  color: #1a73e8;
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+.info-box-yellow {
+  background: #fef7e0;
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  margin-bottom: 16px;
+  font-size: .8rem;
+  color: #b06000;
+}
+.info-box-yellow code {
+  background: rgba(0,0,0,.08);
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: .78rem;
+}
+
+/* ============================================================
+   INFO WAKTU BOX
+   ============================================================ */
+.info-waktu-box {
+  background: var(--bg);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  margin-bottom: 16px;
+  font-size: .82rem;
+  color: var(--text-muted);
+}
+.info-waktu-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+}
+.info-waktu-row strong { color: var(--text); }
+
+/* ============================================================
+   MODAL TALL (untuk cetak laporan)
+   ============================================================ */
+.modal-sheet-tall {
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+/* ============================================================
+   TTD SECTION
+   ============================================================ */
+.ttd-section {
+  background: var(--bg);
+  border-radius: var(--radius-sm);
+  padding: 14px;
+  margin-bottom: 16px;
+  border: 1.5px dashed var(--border);
+}
+.ttd-section-title {
+  font-size: .82rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+}
