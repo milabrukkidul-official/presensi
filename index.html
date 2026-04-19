@@ -9,54 +9,46 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>Presensi Guru</title>
   <link rel="stylesheet" href="assets/css/style.css">
-  <!-- HTML5-QRCode Library -->
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 </head>
 <body>
 
-<!-- ============================================================
-     LOADING SCREEN
-     ============================================================ -->
+<!-- ===== LOADING SCREEN ===== -->
 <div id="loading-screen">
   <img id="loading-logo" class="loading-logo" src="" alt="Logo" style="display:none"
        onerror="this.style.display='none';document.getElementById('loading-logo-placeholder').style.display='flex'">
-  <div id="loading-logo-placeholder" class="loading-logo-placeholder">🏫</div>
+  <div id="loading-logo-placeholder" class="loading-logo-placeholder">&#x1F3EB;</div>
   <div id="loading-title" class="loading-title">Sistem Presensi</div>
   <div class="loading-sub">Memuat data...</div>
   <div class="loading-bar"><div class="loading-bar-fill"></div></div>
 </div>
 
-<!-- ============================================================
-     TOAST CONTAINER
-     ============================================================ -->
+<!-- ===== TOAST ===== -->
 <div id="toast-container" class="toast-container"></div>
 
-<!-- ============================================================
-     HEADER
-     ============================================================ -->
+<!-- ===== HEADER ===== -->
 <header class="app-header">
   <img id="header-logo" class="header-logo" src="" alt="Logo" style="display:none"
        onerror="this.style.display='none';document.getElementById('header-logo-placeholder').style.display='flex'">
-  <div id="header-logo-placeholder" class="header-logo-placeholder">🏫</div>
+  <div id="header-logo-placeholder" class="header-logo-placeholder">&#x1F3EB;</div>
   <div class="header-info">
     <div id="header-title" class="header-title">Sistem Presensi</div>
     <div id="clock-tanggal" class="header-sub">--/--/----</div>
   </div>
-  <button class="header-btn" onclick="openSettingModal()" title="Pengaturan">⚙️</button>
+  <!-- Tombol admin: tampil ikon kunci jika belum login, ikon orang jika sudah -->
+  <button class="header-btn" id="btn-admin-header" onclick="handleAdminHeaderClick()" title="Admin">
+    <span id="admin-header-icon">&#x1F512;</span>
+  </button>
 </header>
 
-<!-- ============================================================
-     HALAMAN HOME - DAFTAR KEHADIRAN
-     ============================================================ -->
+<!-- ===== HALAMAN HOME ===== -->
 <div id="page-home" class="page">
-  <!-- Banner Tanggal & Jam -->
   <div class="date-banner">
     <div id="clock-hari" class="hari">Memuat...</div>
     <div id="clock-jam" class="jam">--:--:--</div>
     <div id="clock-tanggal-banner" class="tanggal">--/--/----</div>
   </div>
 
-  <!-- Statistik -->
   <div id="stats-container" class="stats-row">
     <div class="stat-card stat-hadir"><div class="stat-num">-</div><div class="stat-label">Hadir</div></div>
     <div class="stat-card stat-telat"><div class="stat-num">-</div><div class="stat-label">Terlambat</div></div>
@@ -64,8 +56,17 @@
     <div class="stat-card stat-total"><div class="stat-num">-</div><div class="stat-label">Total</div></div>
   </div>
 
-  <!-- Daftar Guru -->
-  <div class="section-title">📋 Daftar Kehadiran Hari Ini</div>
+  <!-- Tombol Cetak Laporan (hanya tampil jika admin login) -->
+  <div id="cetak-bar" class="cetak-bar" style="display:none">
+    <div class="cetak-bar-title">&#x1F5A8; Cetak Laporan</div>
+    <div class="cetak-btn-row">
+      <button class="cetak-btn cetak-harian"  onclick="openCetakModal('harian')">&#x1F4C5; Harian</button>
+      <button class="cetak-btn cetak-mingguan" onclick="openCetakModal('mingguan')">&#x1F4C6; Mingguan</button>
+      <button class="cetak-btn cetak-bulanan"  onclick="openCetakModal('bulanan')">&#x1F4CB; Bulanan</button>
+    </div>
+  </div>
+
+  <div class="section-title">&#x1F4CB; Daftar Kehadiran Hari Ini</div>
   <div id="guru-list-container" class="guru-list">
     <div class="empty-state">
       <div class="spinner spinner-dark" style="margin:0 auto 12px;"></div>
@@ -73,221 +74,305 @@
     </div>
   </div>
 
-  <!-- Tombol Refresh -->
   <div style="padding:8px 16px 16px">
     <button class="btn btn-outline" onclick="loadPresensiHariIni()" style="font-size:.85rem;padding:10px">
-      🔄 Perbarui Data
+      &#x1F504; Perbarui Data
     </button>
   </div>
 </div>
 
-<!-- ============================================================
-     HALAMAN SCAN BARCODE
-     ============================================================ -->
+<!-- ===== HALAMAN SCAN ===== -->
 <div id="page-scan" class="page">
   <div class="scan-page">
     <div class="scan-container">
       <div class="scan-header">
-        <h2>📷 Scan Barcode</h2>
+        <h2>&#x1F4F7; Scan Barcode</h2>
         <p>Arahkan kamera ke barcode kartu guru</p>
       </div>
-
-      <!-- Tab Mode Scan -->
       <div class="scan-mode-tabs">
-        <button class="scan-tab active" data-scan-mode="masuk">
-          🟢 Absen Masuk
-        </button>
-        <button class="scan-tab" data-scan-mode="pulang">
-          🔵 Absen Pulang
-        </button>
+        <button class="scan-tab active" data-scan-mode="masuk">&#x1F7E2; Absen Masuk</button>
+        <button class="scan-tab" data-scan-mode="pulang">&#x1F535; Absen Pulang</button>
       </div>
-
-      <!-- Kamera -->
       <div id="reader"></div>
     </div>
-
-    <!-- Hasil Scan -->
     <div id="scan-result-card" class="scan-result-card"></div>
   </div>
 </div>
 
-<!-- ============================================================
-     HALAMAN ABSEN MANUAL
-     ============================================================ -->
+<!-- ===== HALAMAN ABSEN MANUAL ===== -->
 <div id="page-manual" class="page">
   <div class="manual-page">
     <div class="manual-card">
-      <h3>📝 Absen Manual</h3>
-
+      <h3>&#x1F4DD; Absen Manual</h3>
       <div class="form-group">
         <label class="form-label">Pilih Guru</label>
         <select id="select-guru-manual" class="form-control">
           <option value="">-- Pilih Guru --</option>
         </select>
       </div>
-
       <div class="form-group">
         <label class="form-label">Keterangan</label>
         <div class="keterangan-grid">
           <button class="ket-btn" data-ket="IJIN">
-            <span class="ket-icon">📋</span>
+            <span class="ket-icon">&#x1F4CB;</span>
             <span class="ket-label">Ijin</span>
           </button>
           <button class="ket-btn" data-ket="SAKIT">
-            <span class="ket-icon">🤒</span>
+            <span class="ket-icon">&#x1F912;</span>
             <span class="ket-label">Sakit</span>
           </button>
           <button class="ket-btn" data-ket="ALPA">
-            <span class="ket-icon">❌</span>
+            <span class="ket-icon">&#x274C;</span>
             <span class="ket-label">Alpa</span>
           </button>
         </div>
       </div>
-
-      <!-- Info Waktu -->
-      <div style="background:var(--bg);border-radius:var(--radius-sm);padding:12px;margin-bottom:16px;font-size:.82rem;color:var(--text-muted)">
-        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-          <span>📅 Tanggal</span>
-          <strong id="manual-tanggal" style="color:var(--text)">--/--/----</strong>
+      <div class="info-waktu-box">
+        <div class="info-waktu-row">
+          <span>&#x1F4C5; Tanggal</span>
+          <strong id="manual-tanggal">--/--/----</strong>
         </div>
-        <div style="display:flex;justify-content:space-between">
-          <span>🕐 Jam Dicatat</span>
-          <strong id="manual-jam" style="color:var(--text)">--:--</strong>
+        <div class="info-waktu-row">
+          <span>&#x1F550; Jam Dicatat</span>
+          <strong id="manual-jam">--:--</strong>
         </div>
       </div>
-
       <button id="btn-submit-manual" class="btn btn-warning" onclick="submitAbsenManual()">
-        💾 Simpan Absen
+        &#x1F4BE; Simpan Absen
       </button>
     </div>
-
-    <!-- Hasil -->
     <div id="manual-result" class="manual-card" style="display:none"></div>
   </div>
 </div>
 
-<!-- ============================================================
-     HALAMAN ABSEN KEPULANGAN
-     ============================================================ -->
+<!-- ===== HALAMAN ABSEN PULANG ===== -->
 <div id="page-pulang" class="page">
   <div class="pulang-page">
     <div class="manual-card">
-      <h3>🏠 Absen Kepulangan</h3>
-
-      <div style="background:#e8f0fe;border-radius:var(--radius-sm);padding:12px;margin-bottom:16px;font-size:.82rem;color:#1a73e8;display:flex;gap:8px;align-items:flex-start">
-        <span>ℹ️</span>
+      <h3>&#x1F3E0; Absen Kepulangan</h3>
+      <div class="info-box-blue">
+        <span>&#x2139;&#xFE0F;</span>
         <span>Gunakan menu ini untuk mencatat kepulangan guru secara manual, atau gunakan Scan Barcode untuk kepulangan otomatis.</span>
       </div>
-
       <div class="form-group">
         <label class="form-label">Pilih Guru</label>
         <select id="select-guru-pulang" class="form-control">
           <option value="">-- Pilih Guru --</option>
         </select>
       </div>
-
-      <!-- Info Waktu -->
-      <div style="background:var(--bg);border-radius:var(--radius-sm);padding:12px;margin-bottom:16px;font-size:.82rem;color:var(--text-muted)">
-        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-          <span>📅 Tanggal</span>
-          <strong id="pulang-tanggal" style="color:var(--text)">--/--/----</strong>
+      <div class="info-waktu-box">
+        <div class="info-waktu-row">
+          <span>&#x1F4C5; Tanggal</span>
+          <strong id="pulang-tanggal">--/--/----</strong>
         </div>
-        <div style="display:flex;justify-content:space-between">
-          <span>🕐 Jam Pulang</span>
-          <strong id="pulang-jam" style="color:var(--text)">--:--</strong>
+        <div class="info-waktu-row">
+          <span>&#x1F550; Jam Pulang</span>
+          <strong id="pulang-jam">--:--</strong>
         </div>
       </div>
-
       <button id="btn-submit-pulang" class="btn btn-primary" onclick="submitAbsenPulang()">
-        🏠 Catat Kepulangan
+        &#x1F3E0; Catat Kepulangan
       </button>
     </div>
-
-    <!-- Hasil -->
     <div id="pulang-result" class="manual-card" style="display:none"></div>
   </div>
 </div>
 
-<!-- ============================================================
-     BOTTOM NAVIGATION
-     ============================================================ -->
+<!-- ===== BOTTOM NAVIGATION ===== -->
 <nav class="bottom-nav">
-  <!-- Menu Kiri: Absen Manual -->
   <button class="nav-item" data-nav="manual">
-    <span class="nav-icon">📝</span>
+    <span class="nav-icon">&#x1F4DD;</span>
     <span>Manual</span>
   </button>
-
-  <!-- Menu Tengah: Scan Barcode (utama) -->
   <div class="nav-center">
-    <button class="nav-center-btn" data-nav="scan" title="Scan Barcode">
-      📷
-    </button>
+    <button class="nav-center-btn" data-nav="scan" title="Scan Barcode">&#x1F4F7;</button>
     <span class="nav-center-label">Scan</span>
   </div>
-
-  <!-- Menu Kanan: Absen Pulang -->
   <button class="nav-item" data-nav="pulang">
-    <span class="nav-icon">🏠</span>
+    <span class="nav-icon">&#x1F3E0;</span>
     <span>Pulang</span>
   </button>
 </nav>
 
-<!-- ============================================================
-     MODAL PENGATURAN
-     ============================================================ -->
-<div id="modal-setting" class="modal-overlay" onclick="if(event.target===this)closeSettingModal()">
+<!-- ===================================================
+     MODAL: LOGIN ADMIN
+     =================================================== -->
+<div id="modal-login" class="modal-overlay" onclick="if(event.target===this)closeLoginModal()">
   <div class="modal-sheet">
     <div class="modal-handle"></div>
-    <div class="modal-title">⚙️ Pengaturan API</div>
-
+    <div style="text-align:center;margin-bottom:20px">
+      <div style="font-size:2.5rem;margin-bottom:8px">&#x1F512;</div>
+      <div class="modal-title" style="margin-bottom:4px">Login Admin</div>
+      <div style="font-size:.82rem;color:var(--text-muted)">Masukkan password untuk mengakses fitur admin</div>
+    </div>
     <div class="form-group">
-      <label class="form-label">URL Web App Google Apps Script</label>
-      <input type="url" id="input-api-url" class="form-control"
-             placeholder="https://script.google.com/macros/s/AKfycbxWQ-Q9TKP7TJs_BZw27HUrcUodMwoXedAq-fGQek_v6A88xx6n4eQeVQ9leDgskYTlDw/exec">
+      <label class="form-label">Password Admin</label>
+      <div style="position:relative">
+        <input type="password" id="input-admin-password" class="form-control"
+               placeholder="Masukkan password..."
+               onkeydown="if(event.key==='Enter')submitLogin()">
+        <button onclick="togglePasswordVisibility('input-admin-password','btn-eye-login')"
+                id="btn-eye-login"
+                style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:1.1rem;color:var(--text-muted)">
+          &#x1F441;
+        </button>
+      </div>
     </div>
-
-    <div style="background:#fef7e0;border-radius:var(--radius-sm);padding:12px;margin-bottom:16px;font-size:.8rem;color:#b06000">
-      <strong>📌 Cara mendapatkan URL:</strong><br>
-      1. Buka Google Spreadsheet<br>
-      2. Extensions → Apps Script<br>
-      3. Paste kode dari <code>setup.gs</code><br>
-      4. Jalankan <code>setupSpreadsheet()</code><br>
-      5. Deploy → New Deployment → Web App<br>
-      6. Execute as: <strong>Me</strong>, Access: <strong>Anyone</strong><br>
-      7. Salin URL dan paste di sini
+    <div id="login-error" style="display:none;background:#fce8e6;color:#c5221f;padding:10px 14px;border-radius:var(--radius-sm);font-size:.82rem;margin-bottom:12px">
+      &#x274C; Password salah. Coba lagi.
     </div>
-
     <div style="display:flex;gap:10px">
-      <button class="btn btn-outline" onclick="closeSettingModal()" style="flex:1">Batal</button>
-      <button class="btn btn-primary" onclick="saveApiUrl()" style="flex:1">💾 Simpan</button>
+      <button class="btn btn-outline" onclick="closeLoginModal()" style="flex:1">Batal</button>
+      <button class="btn btn-primary" id="btn-submit-login" onclick="submitLogin()" style="flex:1">
+        &#x1F511; Masuk
+      </button>
     </div>
   </div>
 </div>
 
-<!-- ============================================================
-     SCRIPT
-     ============================================================ -->
+<!-- ===================================================
+     MODAL: MENU ADMIN (setelah login)
+     =================================================== -->
+<div id="modal-admin-menu" class="modal-overlay" onclick="if(event.target===this)closeAdminMenu()">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">&#x1F464; Menu Admin</div>
+    <div class="admin-menu-grid">
+      <button class="admin-menu-item" onclick="closeAdminMenu();openSettingModal()">
+        <span class="admin-menu-icon">&#x2699;&#xFE0F;</span>
+        <span class="admin-menu-label">Pengaturan API</span>
+      </button>
+      <button class="admin-menu-item" onclick="closeAdminMenu();openCetakModal('harian')">
+        <span class="admin-menu-icon">&#x1F4C5;</span>
+        <span class="admin-menu-label">Laporan Harian</span>
+      </button>
+      <button class="admin-menu-item" onclick="closeAdminMenu();openCetakModal('mingguan')">
+        <span class="admin-menu-icon">&#x1F4C6;</span>
+        <span class="admin-menu-label">Laporan Mingguan</span>
+      </button>
+      <button class="admin-menu-item" onclick="closeAdminMenu();openCetakModal('bulanan')">
+        <span class="admin-menu-icon">&#x1F4CB;</span>
+        <span class="admin-menu-label">Laporan Bulanan</span>
+      </button>
+    </div>
+    <button class="btn btn-danger" onclick="logoutAdmin()" style="margin-top:8px">
+      &#x1F6AA; Keluar dari Admin
+    </button>
+  </div>
+</div>
+
+<!-- ===================================================
+     MODAL: PENGATURAN API (hanya admin)
+     =================================================== -->
+<div id="modal-setting" class="modal-overlay" onclick="if(event.target===this)closeSettingModal()">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">&#x2699;&#xFE0F; Pengaturan API</div>
+    <div class="form-group">
+      <label class="form-label">URL Web App Google Apps Script</label>
+      <input type="url" id="input-api-url" class="form-control"
+             placeholder="https://script.google.com/macros/s/.../exec">
+    </div>
+    <div class="info-box-yellow">
+      <strong>&#x1F4CC; Cara mendapatkan URL:</strong><br>
+      1. Buka Google Spreadsheet<br>
+      2. Extensions &#x2192; Apps Script<br>
+      3. Paste kode dari <code>setup.gs</code><br>
+      4. Jalankan <code>setupSpreadsheet()</code><br>
+      5. Deploy &#x2192; New Deployment &#x2192; Web App<br>
+      6. Execute as: <strong>Me</strong>, Access: <strong>Anyone</strong><br>
+      7. Salin URL dan paste di sini
+    </div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-outline" onclick="closeSettingModal()" style="flex:1">Batal</button>
+      <button class="btn btn-primary" onclick="saveApiUrl()" style="flex:1">&#x1F4BE; Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================================================
+     MODAL: CETAK LAPORAN
+     =================================================== -->
+<div id="modal-cetak" class="modal-overlay" onclick="if(event.target===this)closeCetakModal()">
+  <div class="modal-sheet modal-sheet-tall">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="cetak-modal-title">&#x1F5A8; Cetak Laporan</div>
+
+    <!-- Pilih Periode -->
+    <div id="cetak-periode-section">
+      <!-- Harian -->
+      <div id="cetak-form-harian" class="cetak-form-section" style="display:none">
+        <div class="form-group">
+          <label class="form-label">Tanggal</label>
+          <input type="date" id="cetak-tgl-harian" class="form-control">
+        </div>
+      </div>
+      <!-- Mingguan -->
+      <div id="cetak-form-mingguan" class="cetak-form-section" style="display:none">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="form-group">
+            <label class="form-label">Dari Tanggal</label>
+            <input type="date" id="cetak-tgl-dari" class="form-control">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Sampai Tanggal</label>
+            <input type="date" id="cetak-tgl-sampai" class="form-control">
+          </div>
+        </div>
+      </div>
+      <!-- Bulanan -->
+      <div id="cetak-form-bulanan" class="cetak-form-section" style="display:none">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="form-group">
+            <label class="form-label">Bulan</label>
+            <select id="cetak-bulan" class="form-control">
+              <option value="1">Januari</option><option value="2">Februari</option>
+              <option value="3">Maret</option><option value="4">April</option>
+              <option value="5">Mei</option><option value="6">Juni</option>
+              <option value="7">Juli</option><option value="8">Agustus</option>
+              <option value="9">September</option><option value="10">Oktober</option>
+              <option value="11">November</option><option value="12">Desember</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Tahun</label>
+            <input type="number" id="cetak-tahun" class="form-control" min="2020" max="2099">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tanda Tangan -->
+    <div class="ttd-section">
+      <div class="ttd-section-title">&#x270D;&#xFE0F; Tanda Tangan</div>
+      <div class="form-group">
+        <label class="form-label">Nama Kepala Sekolah</label>
+        <input type="text" id="cetak-nama-kepsek" class="form-control"
+               placeholder="Nama Kepala Sekolah">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="form-group">
+          <label class="form-label">Tempat TTD</label>
+          <input type="text" id="cetak-tempat-ttd" class="form-control"
+                 placeholder="Contoh: Bandung">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tanggal TTD</label>
+          <input type="date" id="cetak-tgl-ttd" class="form-control">
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-outline" onclick="closeCetakModal()" style="flex:1">Batal</button>
+      <button class="btn btn-success" id="btn-do-cetak" onclick="doCetakLaporan()" style="flex:1">
+        &#x1F5A8; Cetak
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SCRIPT ===== -->
 <script src="assets/js/app.js"></script>
-<script>
-  // Update jam di halaman manual & pulang secara real-time
-  setInterval(() => {
-    const now = WaktuID.now();
-    const tgl = WaktuID.formatTanggal(now);
-    const jam = WaktuID.formatJam(now);
-
-    const elMT = document.getElementById('manual-tanggal');
-    const elMJ = document.getElementById('manual-jam');
-    const elPT = document.getElementById('pulang-tanggal');
-    const elPJ = document.getElementById('pulang-jam');
-    const elCB = document.getElementById('clock-tanggal-banner');
-
-    if (elMT) elMT.textContent = tgl;
-    if (elMJ) elMJ.textContent = jam;
-    if (elPT) elPT.textContent = tgl;
-    if (elPJ) elPJ.textContent = jam;
-    if (elCB) elCB.textContent = tgl;
-  }, 1000);
-</script>
 </body>
 </html>
