@@ -131,21 +131,25 @@ function setupSpreadsheet() {
 }
 
 // ============================================================
-// HELPER: FORMAT TANGGAL INDONESIA (DD-MM-YYYY)
+// HELPER: FORMAT TANGGAL INDONESIA (DD-MM-YYYY) — WIB (UTC+7)
 // ============================================================
 function formatTanggalIndonesia(date) {
-  const d = String(date.getDate()).padStart(2, '0');
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const y = date.getFullYear();
+  // Konversi ke WIB dengan menambah offset 7 jam
+  const wib = new Date(date.getTime() + 7 * 60 * 60 * 1000);
+  const d = String(wib.getUTCDate()).padStart(2, '0');
+  const m = String(wib.getUTCMonth() + 1).padStart(2, '0');
+  const y = wib.getUTCFullYear();
   return d + '-' + m + '-' + y;
 }
 
 // ============================================================
-// HELPER: FORMAT JAM INDONESIA (HH:mm)
+// HELPER: FORMAT JAM INDONESIA (HH:mm) — WIB (UTC+7)
 // ============================================================
 function formatJamIndonesia(date) {
-  const h = String(date.getHours()).padStart(2, '0');
-  const mn = String(date.getMinutes()).padStart(2, '0');
+  // Konversi ke WIB dengan menambah offset 7 jam
+  const wib = new Date(date.getTime() + 7 * 60 * 60 * 1000);
+  const h  = String(wib.getUTCHours()).padStart(2, '0');
+  const mn = String(wib.getUTCMinutes()).padStart(2, '0');
   return h + ':' + mn;
 }
 
@@ -270,8 +274,15 @@ function cekPresensiHariIni(idBarcode, tanggal) {
   if (!sheet) return null;
   const data = sheet.getDataRange().getValues();
   for (let i = 1; i < data.length; i++) {
+    // Tangani kolom tanggal yang bisa berupa objek Date atau string
+    let tglBaris = data[i][1];
+    if (tglBaris instanceof Date) {
+      tglBaris = formatTanggalIndonesia(tglBaris);
+    } else {
+      tglBaris = String(tglBaris).trim();
+    }
     if (String(data[i][2]).trim() === String(idBarcode).trim() &&
-        String(data[i][1]).trim() === String(tanggal).trim()) {
+        tglBaris === String(tanggal).trim()) {
       return { row: i + 1, data: data[i] };
     }
   }
@@ -300,7 +311,9 @@ function absenMasuk(idBarcode) {
     const now     = new Date();
     const tanggal = formatTanggalIndonesia(now);
     const jam     = formatJamIndonesia(now);
-    const menitNow = now.getHours() * 60 + now.getMinutes();
+    // Hitung menit dalam WIB (UTC+7)
+    const wib      = new Date(now.getTime() + 7 * 60 * 60 * 1000);
+    const menitNow = wib.getUTCHours() * 60 + wib.getUTCMinutes();
 
     // Cari data guru
     const guru = cariGuru(idBarcode);
@@ -379,7 +392,9 @@ function absenPulang(idBarcode) {
     const now      = new Date();
     const tanggal  = formatTanggalIndonesia(now);
     const jam      = formatJamIndonesia(now);
-    const menitNow = now.getHours() * 60 + now.getMinutes();
+    // Hitung menit dalam WIB (UTC+7)
+    const wib      = new Date(now.getTime() + 7 * 60 * 60 * 1000);
+    const menitNow = wib.getUTCHours() * 60 + wib.getUTCMinutes();
 
     const guru = cariGuru(idBarcode);
     if (!guru) {
