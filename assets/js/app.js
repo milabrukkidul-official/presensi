@@ -6,7 +6,15 @@
 // KONFIGURASI - GANTI URL INI SETELAH DEPLOY WEB APP
 // ============================================================
 const CONFIG = {
-  API_URL: localStorage.getItem('presensi_api_url') || '',
+  API_URL: localStorage.getItem('// ============================================================
+// APP.JS - Presensi Guru Mobile
+// ============================================================
+// KONFIGURASI URL API
+// Isi URL Web App Google Apps Script di sini (hardcode).
+// Setelah deploy GAS, salin URL-nya ke variabel API_URL di bawah.
+// Dengan cara ini tidak perlu copypaste setiap kali buka aplikasi.
+// ============================================================
+const API_URL = localStorage.getItem('https://script.google.com/macros/s/AKfycbxWQ-Q9TKP7TJs_BZw27HUrcUodMwoXedAq-fGQek_v6A88xx6n4eQeVQ9leDgskYTlDw/exec') || '';') || '',
   // Contoh: 'https://script.google.com/macros/s/XXXX/exec'
 };
 
