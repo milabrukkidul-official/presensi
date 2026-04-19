@@ -347,8 +347,9 @@ body {
 .badge-ijin     { background: #e8f0fe; color: #1a73e8; }
 .badge-sakit    { background: #fce8e6; color: #c5221f; }
 .badge-alpa     { background: #f1f3f4; color: #5f6368; }
-.badge-pulang   { background: #e6f4ea; color: #137333; }
-.badge-belum    { background: #f1f3f4; color: #9aa0a6; }
+.badge-pulang      { background: #e6f4ea; color: #137333; }
+.badge-mendahului  { background: #fce8e6; color: #b03228; }
+.badge-belum       { background: #f1f3f4; color: #9aa0a6; }
 
 /* ============================================================
    HALAMAN LOGIN
@@ -760,9 +761,10 @@ select.form-control {
   font-size: .72rem;
   font-weight: 600;
 }
-.chip-masuk  { background: #e6f4ea; color: #137333; }
-.chip-pulang { background: #e8f0fe; color: #1a73e8; }
-.chip-belum  { background: #f1f3f4; color: #9aa0a6; }
+.chip-masuk       { background: #e6f4ea; color: #137333; }
+.chip-pulang      { background: #e8f0fe; color: #1a73e8; }
+.chip-mendahului  { background: #fce8e6; color: #b03228; }
+.chip-belum       { background: #f1f3f4; color: #9aa0a6; }
 
 /* ============================================================
    CETAK BAR
