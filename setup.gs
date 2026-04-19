@@ -163,10 +163,20 @@ function getSetting(key) {
     if (data[i][0] === key) {
       const val = data[i][1];
       if (val === null || val === undefined || val === '') return null;
-      // Jika Google Sheets mengkonversi jam ke objek Date, format ulang ke HH:mm
+
+      // Google Sheets menyimpan nilai waktu (time-only) sebagai objek Date
+      // dengan epoch 1899-12-30. Nilai numeriknya adalah fraksi desimal dari 1 hari.
+      // Contoh: 07:00 = 0.291666... (7/24)
+      // Cara paling aman: ambil nilai numerik dari sheet (bukan lewat Date object)
+      // lalu konversi manual agar tidak terpengaruh timezone server GAS.
       if (val instanceof Date) {
-        const h  = String(val.getHours()).padStart(2, '0');
-        const mn = String(val.getMinutes()).padStart(2, '0');
+        // Hitung total menit dari fraksi hari
+        // getTime() pada epoch 1899-12-30 memberikan milidetik sejak 1899-12-30 00:00 UTC
+        const EPOCH_1899 = -2209161600000; // ms dari Unix epoch ke 1899-12-30 00:00 UTC
+        const msFromEpoch = val.getTime() - EPOCH_1899;
+        const totalMenit  = Math.round(msFromEpoch / 60000);
+        const h  = String(Math.floor(totalMenit / 60) % 24).padStart(2, '0');
+        const mn = String(totalMenit % 60).padStart(2, '0');
         return h + ':' + mn;
       }
       return String(val);
