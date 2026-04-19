@@ -290,6 +290,7 @@ function absenMasuk(idBarcode) {
       const no = getNomorPresensi();
       sheet.appendRow([no, tanggal, idBarcode, guru.nama, jam, status, '', '', '']);
     }
+    SpreadsheetApp.flush(); // Pastikan data langsung tersimpan
 
     const pesanStatus = status === 'TERLAMBAT'
       ? 'Absen masuk berhasil (TERLAMBAT - ' + jam + ')'
@@ -373,6 +374,7 @@ function absenPulang(idBarcode) {
     const sheet = ss.getSheetByName(SHEET_PRESENSI);
     sheet.getRange(existing.row, 7).setValue(jam);
     sheet.getRange(existing.row, 8).setValue(statusPulang);
+    SpreadsheetApp.flush(); // Pastikan data langsung tersimpan
 
     const pesanStatus = statusPulang === 'MENDAHULUI'
       ? 'Absen pulang berhasil (MENDAHULUI - sebelum pukul ' + jamPulangNormal + ')'
@@ -422,6 +424,7 @@ function absenManual(idBarcode, keterangan) {
     const sheet = ss.getSheetByName(SHEET_PRESENSI);
     const no    = getNomorPresensi();
     sheet.appendRow([no, tanggal, idBarcode, guru.nama, jam, status, '', '', keterangan]);
+    SpreadsheetApp.flush(); // Pastikan data langsung tersimpan
 
     return {
       success:  true,
@@ -442,6 +445,9 @@ function absenManual(idBarcode, keterangan) {
 // ============================================================
 function getPresensiHariIni() {
   try {
+    // Flush untuk memastikan semua perubahan tersimpan sebelum dibaca
+    SpreadsheetApp.flush();
+
     const now     = new Date();
     const tanggal = formatTanggalIndonesia(now);
 
@@ -455,7 +461,14 @@ function getPresensiHariIni() {
     // Buat map presensi hari ini
     const mapPresensi = {};
     for (let i = 1; i < dataPres.length; i++) {
-      if (String(dataPres[i][1]).trim() === tanggal) {
+      // Tangani kasus Google Sheets mengkonversi kolom tanggal ke objek Date
+      let tglBaris = dataPres[i][1];
+      if (tglBaris instanceof Date) {
+        tglBaris = formatTanggalIndonesia(tglBaris);
+      } else {
+        tglBaris = String(tglBaris).trim();
+      }
+      if (tglBaris === tanggal) {
         mapPresensi[String(dataPres[i][2]).trim()] = {
           jamMasuk:    dataPres[i][4] || '-',
           statusMasuk: dataPres[i][5] || '-',
@@ -545,7 +558,13 @@ function getLaporan(tipe, params) {
     // Filter baris presensi
     var rows = [];
     for (var i = 1; i < dataPres.length; i++) {
-      var tglBaris = String(dataPres[i][1]).trim();
+      // Tangani kasus Google Sheets mengkonversi kolom tanggal ke objek Date
+      var tglBaris = dataPres[i][1];
+      if (tglBaris instanceof Date) {
+        tglBaris = formatTanggalIndonesia(tglBaris);
+      } else {
+        tglBaris = String(tglBaris).trim();
+      }
       if (tanggalSet[tglBaris]) {
         rows.push({
           tanggal:     tglBaris,
