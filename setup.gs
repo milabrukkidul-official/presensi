@@ -664,24 +664,49 @@ function parseTanggalID(str) {
 }
 
 // ============================================================
-// AMBIL SEMUA DATA GURU (untuk dropdown absen manual)
+// AMBIL DATA GURU YANG BELUM ABSEN HARI INI (untuk dropdown absen manual)
+// Guru yang sudah memiliki data presensi hari ini (apapun statusnya)
+// tidak akan muncul di dropdown absen manual.
 // ============================================================
 function getDataGuru() {
   try {
-    const ss    = SpreadsheetApp.getActiveSpreadsheet();
-    const sheet = ss.getSheetByName(SHEET_GURU);
-    const data  = sheet.getDataRange().getValues();
-    const result = [];
-    for (let i = 1; i < data.length; i++) {
-      if (data[i][0]) {
-        result.push({
-          no:       data[i][0],
-          nama:     data[i][1],
-          idBarcode: String(data[i][2]).trim(),
-          urlFoto:  data[i][3]
-        });
+    const ss        = SpreadsheetApp.getActiveSpreadsheet();
+    const sheetGuru = ss.getSheetByName(SHEET_GURU);
+    const sheetPres = ss.getSheetByName(SHEET_PRESENSI);
+
+    const dataGuru = sheetGuru.getDataRange().getValues();
+    const dataPres = sheetPres.getDataRange().getValues();
+
+    // Buat set ID barcode yang sudah absen hari ini
+    const now     = new Date();
+    const tanggal = formatTanggalIndonesia(now);
+    const sudahAbsen = {};
+    for (let i = 1; i < dataPres.length; i++) {
+      let tglBaris = dataPres[i][1];
+      if (tglBaris instanceof Date) {
+        tglBaris = formatTanggalIndonesia(tglBaris);
+      } else {
+        tglBaris = String(tglBaris).trim();
+      }
+      if (tglBaris === tanggal) {
+        sudahAbsen[String(dataPres[i][2]).trim()] = true;
       }
     }
+
+    // Kembalikan hanya guru yang belum absen hari ini
+    const result = [];
+    for (let i = 1; i < dataGuru.length; i++) {
+      if (!dataGuru[i][0]) continue;
+      const id = String(dataGuru[i][2]).trim();
+      if (sudahAbsen[id]) continue; // sudah absen, skip
+      result.push({
+        no:        dataGuru[i][0],
+        nama:      dataGuru[i][1],
+        idBarcode: id,
+        urlFoto:   dataGuru[i][3]
+      });
+    }
+
     return { success: true, data: result };
   } catch (e) {
     return { success: false, message: e.message };
