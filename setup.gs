@@ -618,6 +618,129 @@ function getPresensiHariIni() {
 }
 
 // ============================================================
+// AMBIL STATISTIK (global / individu per bulan)
+// ============================================================
+function getStatistik(tipe, params) {
+  try {
+    const ss        = SpreadsheetApp.getActiveSpreadsheet();
+    const sheetGuru = ss.getSheetByName(SHEET_GURU);
+    const sheetPres = ss.getSheetByName(SHEET_PRESENSI);
+    const dataGuru  = sheetGuru.getDataRange().getValues();
+    const dataPres  = sheetPres.getDataRange().getValues();
+
+    const bl = parseInt(params.bulan);
+    const th = parseInt(params.tahun);
+
+    // Filter baris presensi bulan & tahun yang diminta
+    var rows = [];
+    for (var i = 1; i < dataPres.length; i++) {
+      var tglStr = String(dataPres[i][1]).trim(); // DD-MM-YYYY
+      var parts  = tglStr.split('-');
+      if (parts.length < 3) continue;
+      if (parseInt(parts[1]) === bl && parseInt(parts[2]) === th) {
+        rows.push({
+          tanggal:     tglStr,
+          idBarcode:   String(dataPres[i][2]).trim(),
+          nama:        dataPres[i][3],
+          jamMasuk:    dataPres[i][4] || '-',
+          statusMasuk: String(dataPres[i][5] || '').toUpperCase(),
+          jamPulang:   dataPres[i][6] || '-',
+          statusPulang: String(dataPres[i][7] || '').toUpperCase(),
+          keterangan:  dataPres[i][8] || ''
+        });
+      }
+    }
+
+    if (tipe === 'global') {
+      // Hitung hari kerja unik
+      var hariSet = {};
+      rows.forEach(function(r){ hariSet[r.tanggal] = true; });
+      var totalHariKerja = Object.keys(hariSet).length;
+
+      // Rekap per guru
+      var mapGuru = {};
+      for (var j = 1; j < dataGuru.length; j++) {
+        if (!dataGuru[j][0]) continue;
+        var id = String(dataGuru[j][2]).trim();
+        mapGuru[id] = { nama: dataGuru[j][1], hadir:0, terlambat:0, ijin:0, sakit:0, alpa:0 };
+      }
+      rows.forEach(function(r){
+        if (!mapGuru[r.idBarcode]) return;
+        var s = r.statusMasuk;
+        if (s === 'HADIR')     mapGuru[r.idBarcode].hadir++;
+        else if (s === 'TERLAMBAT') mapGuru[r.idBarcode].terlambat++;
+        else if (s === 'IJIN') mapGuru[r.idBarcode].ijin++;
+        else if (s === 'SAKIT') mapGuru[r.idBarcode].sakit++;
+        else if (s === 'ALPA') mapGuru[r.idBarcode].alpa++;
+      });
+
+      var perGuru = Object.values(mapGuru).sort(function(a,b){ return a.nama.localeCompare(b.nama); });
+      var totalGuru = perGuru.length || 1;
+      var sumHadir = 0, sumTelat = 0, sumAbsen = 0;
+      perGuru.forEach(function(g){ sumHadir+=g.hadir; sumTelat+=g.terlambat; sumAbsen+=g.ijin+g.sakit+g.alpa; });
+
+      return {
+        success:       true,
+        tipe:          'global',
+        bulan:         bl,
+        tahun:         th,
+        totalHariKerja: totalHariKerja,
+        rataHadir:     Math.round(sumHadir/totalGuru*10)/10,
+        rataTerlambat: Math.round(sumTelat/totalGuru*10)/10,
+        rataAbsen:     Math.round(sumAbsen/totalGuru*10)/10,
+        perGuru:       perGuru
+      };
+    }
+
+    if (tipe === 'individu') {
+      var idTarget = String(params.idBarcode || '').trim();
+      // Cari data guru
+      var guruData = null;
+      for (var k = 1; k < dataGuru.length; k++) {
+        if (String(dataGuru[k][2]).trim() === idTarget) {
+          guruData = { nama: dataGuru[k][1], idBarcode: idTarget, urlFoto: dataGuru[k][3] };
+          break;
+        }
+      }
+      if (!guruData) return { success: false, message: 'Guru tidak ditemukan.' };
+
+      var detail = rows.filter(function(r){ return r.idBarcode === idTarget; });
+      detail.sort(function(a,b){ return a.tanggal < b.tanggal ? -1 : 1; });
+
+      var hadir=0, terlambat=0, ijin=0, sakit=0, alpa=0, mendahului=0;
+      detail.forEach(function(r){
+        var s = r.statusMasuk;
+        if (s==='HADIR')     hadir++;
+        else if (s==='TERLAMBAT') terlambat++;
+        else if (s==='IJIN') ijin++;
+        else if (s==='SAKIT') sakit++;
+        else if (s==='ALPA') alpa++;
+        if (r.statusPulang==='MENDAHULUI') mendahului++;
+      });
+
+      return {
+        success:    true,
+        tipe:       'individu',
+        bulan:      bl,
+        tahun:      th,
+        guru:       guruData,
+        hadir:      hadir,
+        terlambat:  terlambat,
+        ijin:       ijin,
+        sakit:      sakit,
+        alpa:       alpa,
+        mendahului: mendahului,
+        detail:     detail
+      };
+    }
+
+    return { success: false, message: 'Tipe statistik tidak dikenal: ' + tipe };
+  } catch(e) {
+    return { success: false, message: 'Error getStatistik: ' + e.message };
+  }
+}
+
+// ============================================================
 // AMBIL DATA LAPORAN (harian / mingguan / bulanan)
 // ============================================================
 function getLaporan(tipe, params) {
@@ -871,6 +994,13 @@ function doGet(e) {
           tahun:   e.parameter.tahun   || ''
         });
         break;
+      case 'getStatistik':
+        result = getStatistik(e.parameter.tipe, {
+          bulan:     e.parameter.bulan     || '',
+          tahun:     e.parameter.tahun     || '',
+          idBarcode: e.parameter.idBarcode || ''
+        });
+        break;
       default:
         result = { success: false, message: 'Action tidak dikenal: ' + action };
     }
@@ -923,6 +1053,13 @@ function doPost(e) {
           sampai:  params.sampai  || '',
           bulan:   params.bulan   || '',
           tahun:   params.tahun   || ''
+        });
+        break;
+      case 'getStatistik':
+        result = getStatistik(params.tipe, {
+          bulan:     params.bulan     || '',
+          tahun:     params.tahun     || '',
+          idBarcode: params.idBarcode || ''
         });
         break;
       default:
