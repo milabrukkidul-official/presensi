@@ -916,3 +916,146 @@ select.form-control {
   text-transform: uppercase;
   letter-spacing: .4px;
 }
+
+/* ============================================================
+   TOMBOL SILANG SCAN (kembali/batalkan)
+   ============================================================ */
+.scan-close-btn {
+  position: absolute;
+  top: calc(var(--header-h) + 12px);
+  right: 16px;
+  z-index: 50;
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: rgba(0,0,0,.55);
+  border: none;
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .2s, transform .15s;
+  backdrop-filter: blur(4px);
+}
+.scan-close-btn:hover  { background: rgba(219,68,55,.85); }
+.scan-close-btn:active { transform: scale(.9); }
+
+/* Halaman scan perlu position relative agar tombol silang bisa absolute */
+#page-scan { position: relative; }
+
+/* ============================================================
+   HALAMAN LAPORAN & STATISTIK
+   ============================================================ */
+.laporan-page,
+.statistik-page { padding: 16px; }
+
+.laporan-header-card {
+  background: linear-gradient(135deg, var(--primary), #4285f4);
+  border-radius: var(--radius-sm);
+  padding: 16px;
+  margin-bottom: 14px;
+  color: #fff;
+}
+.laporan-header-title { font-size: 1.1rem; font-weight: 800; margin-bottom: 2px; }
+.laporan-header-sub   { font-size: .8rem; opacity: .85; }
+
+/* Tab laporan / statistik */
+.laporan-tabs {
+  display: flex;
+  background: var(--card);
+  border-radius: var(--radius-sm);
+  padding: 4px;
+  gap: 4px;
+  margin-bottom: 14px;
+  box-shadow: var(--shadow);
+}
+.laporan-tab {
+  flex: 1;
+  padding: 9px 6px;
+  border: none;
+  border-radius: 8px;
+  font-size: .8rem;
+  font-weight: 700;
+  font-family: var(--font);
+  color: var(--text-muted);
+  background: transparent;
+  cursor: pointer;
+  transition: background .2s, color .2s;
+}
+.laporan-tab.active {
+  background: var(--primary);
+  color: #fff;
+}
+
+/* Filter section */
+.laporan-filter-section {
+  background: var(--card);
+  border-radius: var(--radius-sm);
+  padding: 14px;
+  margin-bottom: 14px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.laporan-filter-section .form-group { margin-bottom: 0; }
+.laporan-filter-section .btn { margin-top: 4px; }
+
+/* Info bar */
+.laporan-info-bar {
+  font-size: .78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  padding: 8px 0 10px;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+}
+
+/* Tabel laporan */
+.laporan-table-wrap {
+  overflow-x: auto;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+  margin-bottom: 16px;
+}
+.laporan-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--card);
+  font-size: .82rem;
+}
+.laporan-table thead th {
+  background: var(--primary);
+  color: #fff;
+  padding: 9px 8px;
+  text-align: center;
+  font-weight: 700;
+  font-size: .75rem;
+  white-space: nowrap;
+}
+.laporan-table tbody td {
+  padding: 8px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+.laporan-table tbody tr:last-child td { border-bottom: none; }
+.laporan-table tbody tr:nth-child(even) td { background: #f8f9fa; }
+
+/* Statistik summary grid */
+.stat-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.stat-summary-card {
+  background: var(--card);
+  border-radius: var(--radius-sm);
+  padding: 12px 6px;
+  text-align: center;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
