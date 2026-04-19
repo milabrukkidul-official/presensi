@@ -152,10 +152,29 @@
       <h3>&#x1F3E0; Absen Kepulangan</h3>
       <div class="info-box-blue">
         <span>&#x2139;&#xFE0F;</span>
-        <span>Gunakan menu ini untuk mencatat kepulangan guru secara manual, atau gunakan Scan Barcode untuk kepulangan otomatis.</span>
+        <span>Hanya guru yang sudah absen masuk (Hadir/Terlambat) dan belum pulang yang ditampilkan.</span>
       </div>
+
+      <!-- Tombol toggle scanner -->
+      <button id="btn-toggle-scan-pulang" class="btn btn-primary" onclick="toggleScanPulang()" style="margin-bottom:14px">
+        &#x1F4F7; Scan Barcode Pulang
+      </button>
+
+      <!-- Area scanner pulang (tersembunyi by default) -->
+      <div id="pulang-scan-area" style="display:none;margin-bottom:14px">
+        <div class="scan-container" style="border-radius:var(--radius-sm);overflow:hidden">
+          <div class="scan-header" style="padding:12px">
+            <h2 style="font-size:.95rem">&#x1F4F7; Scan Barcode Pulang</h2>
+            <p>Arahkan kamera ke barcode kartu guru</p>
+          </div>
+          <div id="reader-pulang"></div>
+        </div>
+        <div id="pulang-scan-result" class="scan-result-card" style="margin-top:12px"></div>
+      </div>
+
+      <!-- Form manual -->
       <div class="form-group">
-        <label class="form-label">Pilih Guru</label>
+        <label class="form-label">Atau Pilih Manual</label>
         <select id="select-guru-pulang" class="form-control">
           <option value="">-- Pilih Guru --</option>
         </select>
