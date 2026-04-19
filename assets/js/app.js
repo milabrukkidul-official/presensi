@@ -274,7 +274,12 @@ async function loadPresensiHariIni() {
         : '<div class="guru-foto-placeholder">👤</div>';
 
       const chipMasuk  = pres && pres.jamMasuk  && pres.jamMasuk  !== '-' ? '<span class="chip chip-masuk">🕐 '+pres.jamMasuk+'</span>'  : '';
-      const chipPulang = pres && pres.jamPulang && pres.jamPulang !== '-' ? '<span class="chip chip-pulang">🏠 '+pres.jamPulang+'</span>' : '';
+      // Chip pulang: warna berbeda jika MENDAHULUI
+      const statusPulang = pres ? (pres.statusPulang||'').toUpperCase() : '';
+      const chipPulangClass = statusPulang === 'MENDAHULUI' ? 'chip chip-mendahului' : 'chip chip-pulang';
+      const chipPulang = pres && pres.jamPulang && pres.jamPulang !== '-'
+        ? '<span class="'+chipPulangClass+'">🏠 '+pres.jamPulang+(statusPulang === 'MENDAHULUI' ? ' ⚠️' : '')+'</span>'
+        : '';
 
       container.innerHTML +=
         '<div class="guru-card">' +
