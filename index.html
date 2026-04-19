@@ -7,9 +7,6 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <!-- PWA: agar bisa di-install dan berjalan fullscreen dari homescreen -->
-  <meta name="apple-touch-fullscreen" content="yes">
-  <link rel="manifest" href="manifest.json">
   <title>Presensi Guru</title>
   <link rel="stylesheet" href="assets/css/style.css">
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
@@ -38,40 +35,26 @@
     <div id="header-title" class="header-title">Sistem Presensi</div>
     <div id="clock-tanggal" class="header-sub">--/--/----</div>
   </div>
-  <!-- Tombol admin: tampil ikon kunci jika belum login, ikon orang jika sudah -->
   <button class="header-btn" id="btn-admin-header" onclick="handleAdminHeaderClick()" title="Admin">
     <span id="admin-header-icon">&#x1F512;</span>
   </button>
-  <button class="header-btn" id="btn-fullscreen" onclick="toggleFullscreen()" title="Fullscreen" style="margin-left:6px">
-    <span id="fullscreen-icon">&#x26F6;</span>
-  </button>
 </header>
 
-<!-- ===== HALAMAN HOME ===== -->
+<!-- ================================================================
+     HALAMAN HOME — DAFTAR KEHADIRAN
+     ================================================================ -->
 <div id="page-home" class="page">
   <div class="date-banner">
     <div id="clock-hari" class="hari">Memuat...</div>
     <div id="clock-jam" class="jam">--:--:--</div>
     <div id="clock-tanggal-banner" class="tanggal">--/--/----</div>
   </div>
-
   <div id="stats-container" class="stats-row">
     <div class="stat-card stat-hadir"><div class="stat-num">-</div><div class="stat-label">Hadir</div></div>
     <div class="stat-card stat-telat"><div class="stat-num">-</div><div class="stat-label">Terlambat</div></div>
     <div class="stat-card stat-absen"><div class="stat-num">-</div><div class="stat-label">Belum/Absen</div></div>
     <div class="stat-card stat-total"><div class="stat-num">-</div><div class="stat-label">Total</div></div>
   </div>
-
-  <!-- Tombol Cetak Laporan (hanya tampil jika admin login) -->
-  <div id="cetak-bar" class="cetak-bar" style="display:none">
-    <div class="cetak-bar-title">&#x1F5A8; Cetak Laporan</div>
-    <div class="cetak-btn-row">
-      <button class="cetak-btn cetak-harian"  onclick="openCetakModal('harian')">&#x1F4C5; Harian</button>
-      <button class="cetak-btn cetak-mingguan" onclick="openCetakModal('mingguan')">&#x1F4C6; Mingguan</button>
-      <button class="cetak-btn cetak-bulanan"  onclick="openCetakModal('bulanan')">&#x1F4CB; Bulanan</button>
-    </div>
-  </div>
-
   <div class="section-title">&#x1F4CB; Daftar Kehadiran Hari Ini</div>
   <div id="guru-list-container" class="guru-list">
     <div class="empty-state">
@@ -79,7 +62,6 @@
       <p>Memuat data...</p>
     </div>
   </div>
-
   <div style="padding:8px 16px 16px">
     <button class="btn btn-outline" onclick="loadPresensiHariIni()" style="font-size:.85rem;padding:10px">
       &#x1F504; Perbarui Data
@@ -87,9 +69,14 @@
   </div>
 </div>
 
-<!-- ===== HALAMAN SCAN ===== -->
+<!-- ================================================================
+     HALAMAN SCAN BARCODE (admin only)
+     ================================================================ -->
 <div id="page-scan" class="page">
   <div class="scan-page">
+    <!-- Tombol kembali / batalkan -->
+    <button class="scan-close-btn" onclick="closeScanPage()" title="Kembali">&#x2715;</button>
+
     <div class="scan-container">
       <div class="scan-header">
         <h2>&#x1F4F7; Scan Barcode</h2>
@@ -105,7 +92,9 @@
   </div>
 </div>
 
-<!-- ===== HALAMAN ABSEN MANUAL ===== -->
+<!-- ================================================================
+     HALAMAN ABSEN MANUAL (admin only)
+     ================================================================ -->
 <div id="page-manual" class="page">
   <div class="manual-page">
     <div class="manual-card">
@@ -120,28 +109,19 @@
         <label class="form-label">Keterangan</label>
         <div class="keterangan-grid">
           <button class="ket-btn" data-ket="IJIN">
-            <span class="ket-icon">&#x1F4CB;</span>
-            <span class="ket-label">Ijin</span>
+            <span class="ket-icon">&#x1F4CB;</span><span class="ket-label">Ijin</span>
           </button>
           <button class="ket-btn" data-ket="SAKIT">
-            <span class="ket-icon">&#x1F912;</span>
-            <span class="ket-label">Sakit</span>
+            <span class="ket-icon">&#x1F912;</span><span class="ket-label">Sakit</span>
           </button>
           <button class="ket-btn" data-ket="ALPA">
-            <span class="ket-icon">&#x274C;</span>
-            <span class="ket-label">Alpa</span>
+            <span class="ket-icon">&#x274C;</span><span class="ket-label">Alpa</span>
           </button>
         </div>
       </div>
       <div class="info-waktu-box">
-        <div class="info-waktu-row">
-          <span>&#x1F4C5; Tanggal</span>
-          <strong id="manual-tanggal">--/--/----</strong>
-        </div>
-        <div class="info-waktu-row">
-          <span>&#x1F550; Jam Dicatat</span>
-          <strong id="manual-jam">--:--</strong>
-        </div>
+        <div class="info-waktu-row"><span>&#x1F4C5; Tanggal</span><strong id="manual-tanggal">--/--/----</strong></div>
+        <div class="info-waktu-row"><span>&#x1F550; Jam Dicatat</span><strong id="manual-jam">--:--</strong></div>
       </div>
       <button id="btn-submit-manual" class="btn btn-warning" onclick="submitAbsenManual()">
         &#x1F4BE; Simpan Absen
@@ -151,22 +131,20 @@
   </div>
 </div>
 
-<!-- ===== HALAMAN ABSEN PULANG ===== -->
+<!-- ================================================================
+     HALAMAN ABSEN PULANG (admin only)
+     ================================================================ -->
 <div id="page-pulang" class="page">
   <div class="pulang-page">
     <div class="manual-card">
       <h3>&#x1F3E0; Absen Kepulangan</h3>
       <div class="info-box-blue">
         <span>&#x2139;&#xFE0F;</span>
-        <span>Hanya guru yang sudah absen masuk (Hadir/Terlambat) dan belum pulang yang ditampilkan.</span>
+        <span>Hanya guru yang sudah absen masuk dan belum pulang yang ditampilkan.</span>
       </div>
-
-      <!-- Tombol toggle scanner -->
       <button id="btn-toggle-scan-pulang" class="btn btn-primary" onclick="toggleScanPulang()" style="margin-bottom:14px">
         &#x1F4F7; Scan Barcode Pulang
       </button>
-
-      <!-- Area scanner pulang (tersembunyi by default) -->
       <div id="pulang-scan-area" style="display:none;margin-bottom:14px">
         <div class="scan-container" style="border-radius:var(--radius-sm);overflow:hidden">
           <div class="scan-header" style="padding:12px">
@@ -177,8 +155,6 @@
         </div>
         <div id="pulang-scan-result" class="scan-result-card" style="margin-top:12px"></div>
       </div>
-
-      <!-- Form manual -->
       <div class="form-group">
         <label class="form-label">Atau Pilih Manual</label>
         <select id="select-guru-pulang" class="form-control">
@@ -186,14 +162,8 @@
         </select>
       </div>
       <div class="info-waktu-box">
-        <div class="info-waktu-row">
-          <span>&#x1F4C5; Tanggal</span>
-          <strong id="pulang-tanggal">--/--/----</strong>
-        </div>
-        <div class="info-waktu-row">
-          <span>&#x1F550; Jam Pulang</span>
-          <strong id="pulang-jam">--:--</strong>
-        </div>
+        <div class="info-waktu-row"><span>&#x1F4C5; Tanggal</span><strong id="pulang-tanggal">--/--/----</strong></div>
+        <div class="info-waktu-row"><span>&#x1F550; Jam Pulang</span><strong id="pulang-jam">--:--</strong></div>
       </div>
       <button id="btn-submit-pulang" class="btn btn-primary" onclick="submitAbsenPulang()">
         &#x1F3E0; Catat Kepulangan
@@ -203,8 +173,161 @@
   </div>
 </div>
 
-<!-- ===== BOTTOM NAVIGATION ===== -->
-<nav class="bottom-nav">
+<!-- ================================================================
+     HALAMAN LAPORAN (tamu & admin)
+     ================================================================ -->
+<div id="page-laporan" class="page">
+  <div class="laporan-page">
+    <div class="laporan-header-card">
+      <div class="laporan-header-title">&#x1F4CA; Laporan Presensi</div>
+      <div class="laporan-header-sub">Pilih jenis laporan yang ingin dilihat</div>
+    </div>
+
+    <!-- Tab jenis laporan -->
+    <div class="laporan-tabs">
+      <button class="laporan-tab active" data-laporan-tab="harian" onclick="switchLaporanTab('harian')">&#x1F4C5; Harian</button>
+      <button class="laporan-tab" data-laporan-tab="mingguan" onclick="switchLaporanTab('mingguan')">&#x1F4C6; Mingguan</button>
+      <button class="laporan-tab" data-laporan-tab="bulanan" onclick="switchLaporanTab('bulanan')">&#x1F4CB; Bulanan</button>
+    </div>
+
+    <!-- Form filter harian -->
+    <div id="laporan-filter-harian" class="laporan-filter-section">
+      <div class="form-group">
+        <label class="form-label">Tanggal</label>
+        <input type="date" id="laporan-tgl-harian" class="form-control">
+      </div>
+      <button class="btn btn-primary" onclick="loadLaporan('harian')" style="margin-bottom:0">
+        &#x1F50D; Tampilkan
+      </button>
+    </div>
+
+    <!-- Form filter mingguan -->
+    <div id="laporan-filter-mingguan" class="laporan-filter-section" style="display:none">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="form-group">
+          <label class="form-label">Dari</label>
+          <input type="date" id="laporan-tgl-dari" class="form-control">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Sampai</label>
+          <input type="date" id="laporan-tgl-sampai" class="form-control">
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="loadLaporan('mingguan')" style="margin-bottom:0">
+        &#x1F50D; Tampilkan
+      </button>
+    </div>
+
+    <!-- Form filter bulanan -->
+    <div id="laporan-filter-bulanan" class="laporan-filter-section" style="display:none">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="form-group">
+          <label class="form-label">Bulan</label>
+          <select id="laporan-bulan" class="form-control">
+            <option value="1">Januari</option><option value="2">Februari</option>
+            <option value="3">Maret</option><option value="4">April</option>
+            <option value="5">Mei</option><option value="6">Juni</option>
+            <option value="7">Juli</option><option value="8">Agustus</option>
+            <option value="9">September</option><option value="10">Oktober</option>
+            <option value="11">November</option><option value="12">Desember</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tahun</label>
+          <input type="number" id="laporan-tahun" class="form-control" min="2020" max="2099">
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="loadLaporan('bulanan')" style="margin-bottom:0">
+        &#x1F50D; Tampilkan
+      </button>
+    </div>
+
+    <!-- Tombol cetak (hanya admin) -->
+    <div id="laporan-cetak-bar" style="display:none;padding:0 0 12px">
+      <button class="btn btn-success" onclick="cetakLaporanDariHalaman()" style="padding:10px">
+        &#x1F5A8; Cetak Laporan Ini
+      </button>
+    </div>
+
+    <!-- Hasil laporan -->
+    <div id="laporan-result-container"></div>
+  </div>
+</div>
+
+<!-- ================================================================
+     HALAMAN STATISTIK (tamu & admin)
+     ================================================================ -->
+<div id="page-statistik" class="page">
+  <div class="statistik-page">
+    <div class="laporan-header-card">
+      <div class="laporan-header-title">&#x1F4C8; Statistik Kehadiran</div>
+      <div class="laporan-header-sub">Rekap kehadiran global dan per individu</div>
+    </div>
+
+    <!-- Tab global / individu -->
+    <div class="laporan-tabs">
+      <button class="laporan-tab active" data-stat-tab="global" onclick="switchStatTab('global')">&#x1F30D; Global</button>
+      <button class="laporan-tab" data-stat-tab="individu" onclick="switchStatTab('individu')">&#x1F464; Individu</button>
+    </div>
+
+    <!-- Filter periode statistik -->
+    <div class="laporan-filter-section" id="stat-filter-section">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="form-group">
+          <label class="form-label">Bulan</label>
+          <select id="stat-bulan" class="form-control">
+            <option value="1">Januari</option><option value="2">Februari</option>
+            <option value="3">Maret</option><option value="4">April</option>
+            <option value="5">Mei</option><option value="6">Juni</option>
+            <option value="7">Juli</option><option value="8">Agustus</option>
+            <option value="9">September</option><option value="10">Oktober</option>
+            <option value="11">November</option><option value="12">Desember</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tahun</label>
+          <input type="number" id="stat-tahun" class="form-control" min="2020" max="2099">
+        </div>
+      </div>
+      <!-- Pilih guru (hanya tampil di tab individu) -->
+      <div id="stat-guru-select-wrap" style="display:none" class="form-group">
+        <label class="form-label">Pilih Guru</label>
+        <select id="stat-guru-select" class="form-control">
+          <option value="">-- Pilih Guru --</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" onclick="loadStatistik()" style="margin-bottom:0">
+        &#x1F50D; Tampilkan
+      </button>
+    </div>
+
+    <!-- Hasil statistik -->
+    <div id="statistik-result-container"></div>
+  </div>
+</div>
+
+<!-- ================================================================
+     BOTTOM NAVIGATION — TAMU (default)
+     ================================================================ -->
+<nav class="bottom-nav" id="nav-tamu">
+  <button class="nav-item active" data-nav="home">
+    <span class="nav-icon">&#x1F3E0;</span>
+    <span>Beranda</span>
+  </button>
+  <button class="nav-item" data-nav="laporan">
+    <span class="nav-icon">&#x1F4CA;</span>
+    <span>Laporan</span>
+  </button>
+  <button class="nav-item" data-nav="statistik">
+    <span class="nav-icon">&#x1F4C8;</span>
+    <span>Statistik</span>
+  </button>
+</nav>
+
+<!-- ================================================================
+     BOTTOM NAVIGATION — ADMIN (tampil setelah login)
+     ================================================================ -->
+<nav class="bottom-nav" id="nav-admin" style="display:none">
   <button class="nav-item" data-nav="manual">
     <span class="nav-icon">&#x1F4DD;</span>
     <span>Manual</span>
@@ -219,9 +342,9 @@
   </button>
 </nav>
 
-<!-- ===================================================
+<!-- ================================================================
      MODAL: LOGIN ADMIN
-     =================================================== -->
+     ================================================================ -->
 <div id="modal-login" class="modal-overlay" onclick="if(event.target===this)closeLoginModal()">
   <div class="modal-sheet">
     <div class="modal-handle"></div>
@@ -236,8 +359,7 @@
         <input type="password" id="input-admin-password" class="form-control"
                placeholder="Masukkan password..."
                onkeydown="if(event.key==='Enter')submitLogin()">
-        <button onclick="togglePasswordVisibility('input-admin-password','btn-eye-login')"
-                id="btn-eye-login"
+        <button onclick="togglePasswordVisibility('input-admin-password')"
                 style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:1.1rem;color:var(--text-muted)">
           &#x1F441;
         </button>
@@ -255,9 +377,9 @@
   </div>
 </div>
 
-<!-- ===================================================
-     MODAL: MENU ADMIN (setelah login)
-     =================================================== -->
+<!-- ================================================================
+     MODAL: MENU ADMIN
+     ================================================================ -->
 <div id="modal-admin-menu" class="modal-overlay" onclick="if(event.target===this)closeAdminMenu()">
   <div class="modal-sheet">
     <div class="modal-handle"></div>
@@ -267,17 +389,17 @@
         <span class="admin-menu-icon">&#x2699;&#xFE0F;</span>
         <span class="admin-menu-label">Pengaturan API</span>
       </button>
-      <button class="admin-menu-item" onclick="closeAdminMenu();openCetakModal('harian')">
-        <span class="admin-menu-icon">&#x1F4C5;</span>
-        <span class="admin-menu-label">Laporan Harian</span>
+      <button class="admin-menu-item" onclick="closeAdminMenu();navigateTo('laporan')">
+        <span class="admin-menu-icon">&#x1F4CA;</span>
+        <span class="admin-menu-label">Laporan</span>
       </button>
-      <button class="admin-menu-item" onclick="closeAdminMenu();openCetakModal('mingguan')">
-        <span class="admin-menu-icon">&#x1F4C6;</span>
-        <span class="admin-menu-label">Laporan Mingguan</span>
+      <button class="admin-menu-item" onclick="closeAdminMenu();navigateTo('statistik')">
+        <span class="admin-menu-icon">&#x1F4C8;</span>
+        <span class="admin-menu-label">Statistik</span>
       </button>
-      <button class="admin-menu-item" onclick="closeAdminMenu();openCetakModal('bulanan')">
-        <span class="admin-menu-icon">&#x1F4CB;</span>
-        <span class="admin-menu-label">Laporan Bulanan</span>
+      <button class="admin-menu-item" onclick="closeAdminMenu();navigateTo('home')">
+        <span class="admin-menu-icon">&#x1F3E0;</span>
+        <span class="admin-menu-label">Beranda</span>
       </button>
     </div>
     <button class="btn btn-danger" onclick="logoutAdmin()" style="margin-top:8px">
@@ -286,9 +408,9 @@
   </div>
 </div>
 
-<!-- ===================================================
-     MODAL: PENGATURAN API (hanya admin)
-     =================================================== -->
+<!-- ================================================================
+     MODAL: PENGATURAN API
+     ================================================================ -->
 <div id="modal-setting" class="modal-overlay" onclick="if(event.target===this)closeSettingModal()">
   <div class="modal-sheet">
     <div class="modal-handle"></div>
@@ -300,13 +422,11 @@
     </div>
     <div class="info-box-yellow">
       <strong>&#x1F4CC; Cara mendapatkan URL:</strong><br>
-      1. Buka Google Spreadsheet<br>
-      2. Extensions &#x2192; Apps Script<br>
-      3. Paste kode dari <code>setup.gs</code><br>
-      4. Jalankan <code>setupSpreadsheet()</code><br>
-      5. Deploy &#x2192; New Deployment &#x2192; Web App<br>
-      6. Execute as: <strong>Me</strong>, Access: <strong>Anyone</strong><br>
-      7. Salin URL dan paste di sini
+      1. Buka Google Spreadsheet &#x2192; Extensions &#x2192; Apps Script<br>
+      2. Paste kode dari <code>setup.gs</code>, jalankan <code>setupSpreadsheet()</code><br>
+      3. Deploy &#x2192; New Deployment &#x2192; Web App<br>
+      4. Execute as: <strong>Me</strong>, Access: <strong>Anyone</strong><br>
+      5. Salin URL dan paste di sini
     </div>
     <div style="display:flex;gap:10px">
       <button class="btn btn-outline" onclick="closeSettingModal()" style="flex:1">Batal</button>
@@ -315,71 +435,23 @@
   </div>
 </div>
 
-<!-- ===================================================
-     MODAL: CETAK LAPORAN
-     =================================================== -->
+<!-- ================================================================
+     MODAL: CETAK LAPORAN (admin)
+     ================================================================ -->
 <div id="modal-cetak" class="modal-overlay" onclick="if(event.target===this)closeCetakModal()">
   <div class="modal-sheet modal-sheet-tall">
     <div class="modal-handle"></div>
     <div class="modal-title" id="cetak-modal-title">&#x1F5A8; Cetak Laporan</div>
-
-    <!-- Pilih Periode -->
-    <div id="cetak-periode-section">
-      <!-- Harian -->
-      <div id="cetak-form-harian" class="cetak-form-section" style="display:none">
-        <div class="form-group">
-          <label class="form-label">Tanggal</label>
-          <input type="date" id="cetak-tgl-harian" class="form-control">
-        </div>
-      </div>
-      <!-- Mingguan -->
-      <div id="cetak-form-mingguan" class="cetak-form-section" style="display:none">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-          <div class="form-group">
-            <label class="form-label">Dari Tanggal</label>
-            <input type="date" id="cetak-tgl-dari" class="form-control">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Sampai Tanggal</label>
-            <input type="date" id="cetak-tgl-sampai" class="form-control">
-          </div>
-        </div>
-      </div>
-      <!-- Bulanan -->
-      <div id="cetak-form-bulanan" class="cetak-form-section" style="display:none">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-          <div class="form-group">
-            <label class="form-label">Bulan</label>
-            <select id="cetak-bulan" class="form-control">
-              <option value="1">Januari</option><option value="2">Februari</option>
-              <option value="3">Maret</option><option value="4">April</option>
-              <option value="5">Mei</option><option value="6">Juni</option>
-              <option value="7">Juli</option><option value="8">Agustus</option>
-              <option value="9">September</option><option value="10">Oktober</option>
-              <option value="11">November</option><option value="12">Desember</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Tahun</label>
-            <input type="number" id="cetak-tahun" class="form-control" min="2020" max="2099">
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Tanda Tangan -->
     <div class="ttd-section">
       <div class="ttd-section-title">&#x270D;&#xFE0F; Tanda Tangan</div>
       <div class="form-group">
         <label class="form-label">Nama Kepala Sekolah</label>
-        <input type="text" id="cetak-nama-kepsek" class="form-control"
-               placeholder="Nama Kepala Sekolah">
+        <input type="text" id="cetak-nama-kepsek" class="form-control" placeholder="Nama Kepala Sekolah">
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div class="form-group">
           <label class="form-label">Tempat TTD</label>
-          <input type="text" id="cetak-tempat-ttd" class="form-control"
-                 placeholder="Contoh: Bandung">
+          <input type="text" id="cetak-tempat-ttd" class="form-control" placeholder="Contoh: Bandung">
         </div>
         <div class="form-group">
           <label class="form-label">Tanggal TTD</label>
@@ -387,7 +459,6 @@
         </div>
       </div>
     </div>
-
     <div style="display:flex;gap:10px">
       <button class="btn btn-outline" onclick="closeCetakModal()" style="flex:1">Batal</button>
       <button class="btn btn-success" id="btn-do-cetak" onclick="doCetakLaporan()" style="flex:1">
@@ -397,7 +468,6 @@
   </div>
 </div>
 
-<!-- ===== SCRIPT ===== -->
 <script src="assets/js/app.js"></script>
 </body>
 </html>
