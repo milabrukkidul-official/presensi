@@ -81,17 +81,19 @@ function setupSpreadsheet() {
   sheetSetting.clearContents();
 
   const settingData = [
-    ['KEY',              'VALUE',                          'KETERANGAN'],
-    ['NAMA_SEKOLAH',     'SMA Negeri 1 Contoh',            'Nama sekolah/instansi'],
-    ['NAMA_KEPSEK',      'Drs. Nama Kepala Sekolah, M.Pd', 'Nama kepala sekolah (untuk laporan)'],
-    ['LOGO_URL',         '',                               'URL logo sekolah (kosongkan jika tidak ada)'],
-    ['JAM_MASUK_AWAL',   '05:30',                          'Jam paling awal boleh absen masuk (HH:mm)'],
-    ['JAM_MASUK_NORMAL', '07:00',                          'Batas jam masuk normal/tidak terlambat (HH:mm)'],
-    ['JAM_PULANG_AWAL',    '11:00',                          'Jam paling awal boleh absen pulang — tercatat MENDAHULUI (HH:mm)'],
-    ['JAM_PULANG_NORMAL', '13:00',                          'Batas jam pulang normal — di bawah ini tercatat MENDAHULUI (HH:mm)'],
-    ['JAM_PULANG_AKHIR',  '17:00',                          'Batas maksimal absen pulang (HH:mm)'],
-    ['PASSWORD_ADMIN',   'admin123',                       'Password login admin'],
-    ['TAHUN_AJARAN',     '2025/2026',                      'Tahun ajaran aktif'],
+    ['KEY',                        'VALUE',                          'KETERANGAN'],
+    ['NAMA_SEKOLAH',               'SMA Negeri 1 Contoh',            'Nama sekolah/instansi'],
+    ['NAMA_KEPSEK',                'Drs. Nama Kepala Sekolah, M.Pd', 'Nama kepala sekolah (untuk laporan)'],
+    ['LOGO_URL',                   '',                               'URL logo sekolah (kosongkan jika tidak ada)'],
+    ['JAM_MASUK_AWAL',             '05:30',                          'Jam paling awal boleh absen masuk (HH:mm)'],
+    ['JAM_MASUK_NORMAL',           '07:00',                          'Batas jam masuk normal/tidak terlambat (HH:mm)'],
+    ['JAM_PULANG_AWAL',            '09:00',                          'Jam paling awal boleh absen pulang — tercatat MENDAHULUI (HH:mm)'],
+    ['JAM_PULANG_NORMAL',          '13:00',                          'Batas jam pulang normal (Senin-Kamis) — di bawah ini tercatat MENDAHULUI (HH:mm)'],
+    ['JAM_PULANG_NORMAL_JUMAT',    '10:00',                          'Batas jam pulang normal hari Jumat (HH:mm)'],
+    ['JAM_PULANG_NORMAL_SABTU',    '11:00',                          'Batas jam pulang normal hari Sabtu (HH:mm)'],
+    ['JAM_PULANG_AKHIR',           '17:00',                          'Batas maksimal absen pulang (HH:mm)'],
+    ['PASSWORD_ADMIN',             'admin123',                       'Password login admin'],
+    ['TAHUN_AJARAN',               '2025/2026',                      'Tahun ajaran aktif'],
   ];
   sheetSetting.getRange(1, 1, settingData.length, 3).setValues(settingData);
   sheetSetting.getRange(1, 1, 1, 3)
@@ -402,9 +404,23 @@ function absenPulang(idBarcode) {
     }
 
     // Ambil batas jam pulang dari setting
-    const jamPulangAwal    = getSetting('JAM_PULANG_AWAL')    || '11:00';
-    const jamPulangNormal  = getSetting('JAM_PULANG_NORMAL')  || '13:00';
-    const jamPulangAkhir   = getSetting('JAM_PULANG_AKHIR')   || '17:00';
+    // JAM_PULANG_NORMAL berbeda tergantung hari (Jumat & Sabtu lebih awal)
+    const hariWIB = wib.getUTCDay(); // 0=Minggu, 1=Senin, ..., 5=Jumat, 6=Sabtu
+
+    const jamPulangAwal   = getSetting('JAM_PULANG_AWAL')   || '09:00';
+    const jamPulangAkhir  = getSetting('JAM_PULANG_AKHIR')  || '17:00';
+
+    let jamPulangNormal;
+    if (hariWIB === 5) {
+      // Jumat
+      jamPulangNormal = getSetting('JAM_PULANG_NORMAL_JUMAT') || '10:00';
+    } else if (hariWIB === 6) {
+      // Sabtu
+      jamPulangNormal = getSetting('JAM_PULANG_NORMAL_SABTU') || '11:00';
+    } else {
+      // Senin–Kamis (dan Minggu jika masuk)
+      jamPulangNormal = getSetting('JAM_PULANG_NORMAL') || '13:00';
+    }
 
     const menitAwal   = jamKeMenit(jamPulangAwal);
     const menitNormal = jamKeMenit(jamPulangNormal);
