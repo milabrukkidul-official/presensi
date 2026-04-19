@@ -195,6 +195,49 @@ function jamKeMenit(jamStr) {
 }
 
 // ============================================================
+// HELPER: KONVERSI NILAI JAM DARI SPREADSHEET KE "HH:mm"
+// Menangani 3 kemungkinan format yang dikembalikan Google Sheets:
+//   1. String "HH:mm" atau "HH:mm:ss"  → potong ke HH:mm
+//   2. Objek Date dengan epoch 1899-12-30 (time-only cell)
+//   3. Angka desimal fraksi hari (0.0 - 1.0)
+// ============================================================
+function nilaiJamKeString(val) {
+  if (val === null || val === undefined || val === '') return '-';
+
+  // Kasus 1: sudah berupa string jam
+  if (typeof val === 'string') {
+    const trimmed = val.trim();
+    if (trimmed === '' || trimmed === '-') return '-';
+    // Ambil hanya HH:mm (buang detik jika ada)
+    const parts = trimmed.split(':');
+    if (parts.length >= 2) {
+      return parts[0].padStart(2,'0') + ':' + parts[1].padStart(2,'0');
+    }
+    return trimmed;
+  }
+
+  // Kasus 2: objek Date (epoch 1899-12-30 untuk time-only cell)
+  if (val instanceof Date) {
+    const EPOCH_1899 = -2209161600000; // ms dari Unix epoch ke 1899-12-30 00:00 UTC
+    const msFromEpoch = val.getTime() - EPOCH_1899;
+    const totalMenit  = Math.round(msFromEpoch / 60000);
+    const h  = String(Math.floor(totalMenit / 60) % 24).padStart(2, '0');
+    const mn = String(totalMenit % 60).padStart(2, '0');
+    return h + ':' + mn;
+  }
+
+  // Kasus 3: angka desimal fraksi hari (misal 0.291666 = 07:00)
+  if (typeof val === 'number') {
+    const totalMenit = Math.round(val * 24 * 60);
+    const h  = String(Math.floor(totalMenit / 60) % 24).padStart(2, '0');
+    const mn = String(totalMenit % 60).padStart(2, '0');
+    return h + ':' + mn;
+  }
+
+  return String(val);
+}
+
+// ============================================================
 // HELPER: CARI GURU BERDASARKAN ID BARCODE
 // ============================================================
 function cariGuru(idBarcode) {
@@ -267,7 +310,7 @@ function absenMasuk(idBarcode) {
     if (existing && existing.data[4]) {
       return {
         success:    false,
-        message:    guru.nama + ' sudah absen masuk hari ini pukul ' + existing.data[4],
+        message:    guru.nama + ' sudah absen masuk hari ini pukul ' + nilaiJamKeString(existing.data[4]),
         sudahAbsen: true
       };
     }
@@ -375,7 +418,7 @@ function absenPulang(idBarcode) {
     if (existing.data[6]) {
       return {
         success:    false,
-        message:    guru.nama + ' sudah absen pulang hari ini pukul ' + existing.data[6],
+        message:    guru.nama + ' sudah absen pulang hari ini pukul ' + nilaiJamKeString(existing.data[6]),
         sudahAbsen: true
       };
     }
@@ -480,11 +523,11 @@ function getPresensiHariIni() {
       }
       if (tglBaris === tanggal) {
         mapPresensi[String(dataPres[i][2]).trim()] = {
-          jamMasuk:    dataPres[i][4] || '-',
-          statusMasuk: dataPres[i][5] || '-',
-          jamPulang:   dataPres[i][6] || '-',
+          jamMasuk:     nilaiJamKeString(dataPres[i][4]),
+          statusMasuk:  dataPres[i][5] || '-',
+          jamPulang:    nilaiJamKeString(dataPres[i][6]),
           statusPulang: dataPres[i][7] || '-',
-          keterangan:  dataPres[i][8] || ''
+          keterangan:   dataPres[i][8] || ''
         };
       }
     }
@@ -577,14 +620,14 @@ function getLaporan(tipe, params) {
       }
       if (tanggalSet[tglBaris]) {
         rows.push({
-          tanggal:     tglBaris,
-          idBarcode:   String(dataPres[i][2]).trim(),
-          nama:        dataPres[i][3],
-          jamMasuk:    dataPres[i][4] || '-',
-          statusMasuk: dataPres[i][5] || '-',
-          jamPulang:   dataPres[i][6] || '-',
+          tanggal:      tglBaris,
+          idBarcode:    String(dataPres[i][2]).trim(),
+          nama:         dataPres[i][3],
+          jamMasuk:     nilaiJamKeString(dataPres[i][4]),
+          statusMasuk:  dataPres[i][5] || '-',
+          jamPulang:    nilaiJamKeString(dataPres[i][6]),
           statusPulang: dataPres[i][7] || '-',
-          keterangan:  dataPres[i][8] || ''
+          keterangan:   dataPres[i][8] || ''
         });
       }
     }
