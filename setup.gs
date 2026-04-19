@@ -83,6 +83,7 @@ function setupSpreadsheet() {
   const settingData = [
     ['KEY',              'VALUE',                          'KETERANGAN'],
     ['NAMA_SEKOLAH',     'SMA Negeri 1 Contoh',            'Nama sekolah/instansi'],
+    ['NAMA_KEPSEK',      'Drs. Nama Kepala Sekolah, M.Pd', 'Nama kepala sekolah (untuk laporan)'],
     ['LOGO_URL',         '',                               'URL logo sekolah (kosongkan jika tidak ada)'],
     ['JAM_MASUK',        '07:00',                          'Batas jam masuk (HH:mm)'],
     ['JAM_PULANG',       '14:00',                          'Jam pulang normal (HH:mm)'],
@@ -399,15 +400,17 @@ function getPresensiHariIni() {
 
     // Ambil setting
     const namaSekolah = getSetting('NAMA_SEKOLAH') || 'Sistem Presensi';
-    const logoUrl     = getSetting('LOGO_URL') || '';
-    const jamMasuk    = getSetting('JAM_MASUK') || '07:00';
-    const jamPulang   = getSetting('JAM_PULANG') || '14:00';
+    const namaKepsek  = getSetting('NAMA_KEPSEK')  || '';
+    const logoUrl     = getSetting('LOGO_URL')     || '';
+    const jamMasuk    = getSetting('JAM_MASUK')    || '07:00';
+    const jamPulang   = getSetting('JAM_PULANG')   || '14:00';
 
     return {
       success:     true,
       tanggal:     tanggal,
       jam:         formatJamIndonesia(now),
       namaSekolah: namaSekolah,
+      namaKepsek:  namaKepsek,
       logoUrl:     logoUrl,
       jamMasuk:    jamMasuk,
       jamPulang:   jamPulang,
@@ -416,6 +419,87 @@ function getPresensiHariIni() {
   } catch (e) {
     return { success: false, message: 'Error: ' + e.message };
   }
+}
+
+// ============================================================
+// AMBIL DATA LAPORAN (harian / mingguan / bulanan)
+// ============================================================
+function getLaporan(tipe, params) {
+  try {
+    const ss        = SpreadsheetApp.getActiveSpreadsheet();
+    const sheetPres = ss.getSheetByName(SHEET_PRESENSI);
+    const dataPres  = sheetPres.getDataRange().getValues();
+
+    // Tentukan filter tanggal berdasarkan tipe
+    var tanggalSet = {};
+
+    if (tipe === 'harian') {
+      tanggalSet[params.tanggal] = true;
+    }
+    else if (tipe === 'mingguan') {
+      // Iterasi semua tanggal dari 'dari' sampai 'sampai' (DD-MM-YYYY)
+      var d0 = parseTanggalID(params.dari);
+      var d1 = parseTanggalID(params.sampai);
+      var cur = new Date(d0);
+      while (cur <= d1) {
+        tanggalSet[formatTanggalIndonesia(cur)] = true;
+        cur.setDate(cur.getDate() + 1);
+      }
+    }
+    else if (tipe === 'bulanan') {
+      var bl = parseInt(params.bulan);
+      var th = parseInt(params.tahun);
+      var daysInMonth = new Date(th, bl, 0).getDate();
+      for (var day = 1; day <= daysInMonth; day++) {
+        var tgl = String(day).padStart(2,'0') + '-' + String(bl).padStart(2,'0') + '-' + th;
+        tanggalSet[tgl] = true;
+      }
+    }
+
+    // Filter baris presensi
+    var rows = [];
+    for (var i = 1; i < dataPres.length; i++) {
+      var tglBaris = String(dataPres[i][1]).trim();
+      if (tanggalSet[tglBaris]) {
+        rows.push({
+          tanggal:     tglBaris,
+          idBarcode:   String(dataPres[i][2]).trim(),
+          nama:        dataPres[i][3],
+          jamMasuk:    dataPres[i][4] || '-',
+          statusMasuk: dataPres[i][5] || '-',
+          jamPulang:   dataPres[i][6] || '-',
+          statusPulang: dataPres[i][7] || '-',
+          keterangan:  dataPres[i][8] || ''
+        });
+      }
+    }
+
+    // Urutkan: tanggal asc, nama asc
+    rows.sort(function(a, b) {
+      if (a.tanggal < b.tanggal) return -1;
+      if (a.tanggal > b.tanggal) return 1;
+      return a.nama.localeCompare(b.nama);
+    });
+
+    var result = {
+      success: true,
+      tipe:    tipe,
+      rows:    rows
+    };
+    if (tipe === 'harian')   result.tanggal = params.tanggal;
+    if (tipe === 'mingguan') { result.dari = params.dari; result.sampai = params.sampai; }
+    if (tipe === 'bulanan')  { result.bulan = params.bulan; result.tahun = params.tahun; }
+
+    return result;
+  } catch(e) {
+    return { success: false, message: 'Error getLaporan: ' + e.message };
+  }
+}
+
+// Helper: parse DD-MM-YYYY ke Date
+function parseTanggalID(str) {
+  var parts = str.split('-');
+  return new Date(parseInt(parts[2]), parseInt(parts[1])-1, parseInt(parts[0]));
 }
 
 // ============================================================
@@ -491,6 +575,15 @@ function doGet(e) {
       case 'loginAdmin':
         result = loginAdmin(e.parameter.password);
         break;
+      case 'getLaporan':
+        result = getLaporan(e.parameter.tipe, {
+          tanggal: e.parameter.tanggal || '',
+          dari:    e.parameter.dari    || '',
+          sampai:  e.parameter.sampai  || '',
+          bulan:   e.parameter.bulan   || '',
+          tahun:   e.parameter.tahun   || ''
+        });
+        break;
       default:
         result = { success: false, message: 'Action tidak dikenal: ' + action };
     }
@@ -532,6 +625,15 @@ function doPost(e) {
         break;
       case 'loginAdmin':
         result = loginAdmin(params.password);
+        break;
+      case 'getLaporan':
+        result = getLaporan(params.tipe, {
+          tanggal: params.tanggal || '',
+          dari:    params.dari    || '',
+          sampai:  params.sampai  || '',
+          bulan:   params.bulan   || '',
+          tahun:   params.tahun   || ''
+        });
         break;
       default:
         result = { success: false, message: 'Action tidak dikenal: ' + action };
