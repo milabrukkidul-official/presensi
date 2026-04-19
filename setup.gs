@@ -309,11 +309,17 @@ function absenMasuk(idBarcode) {
     }
 
     // Cek sudah absen masuk hari ini?
+    // Tolak jika sudah ada data presensi apapun (scan, manual IJIN/SAKIT/ALPA)
     const existing = cekPresensiHariIni(idBarcode, tanggal);
-    if (existing && existing.data[4]) {
+    if (existing) {
+      const jamTercatat = existing.data[4];
+      const statusTercatat = String(existing.data[5] || '').toUpperCase();
+      const pesanSudah = jamTercatat
+        ? guru.nama + ' sudah absen masuk hari ini pukul ' + nilaiJamKeString(jamTercatat)
+        : guru.nama + ' sudah tercatat ' + statusTercatat + ' hari ini, tidak bisa absen masuk.';
       return {
         success:    false,
-        message:    guru.nama + ' sudah absen masuk hari ini pukul ' + nilaiJamKeString(existing.data[4]),
+        message:    pesanSudah,
         sudahAbsen: true
       };
     }
@@ -338,14 +344,8 @@ function absenMasuk(idBarcode) {
 
     const ss    = SpreadsheetApp.getActiveSpreadsheet();
     const sheet = ss.getSheetByName(SHEET_PRESENSI);
-
-    if (existing) {
-      sheet.getRange(existing.row, 5).setValue(jam);
-      sheet.getRange(existing.row, 6).setValue(status);
-    } else {
-      const no = getNomorPresensi();
-      sheet.appendRow([no, tanggal, idBarcode, guru.nama, jam, status, '', '', '']);
-    }
+    const no    = getNomorPresensi();
+    sheet.appendRow([no, tanggal, idBarcode, guru.nama, jam, status, '', '', '']);
     SpreadsheetApp.flush(); // Pastikan data langsung tersimpan
 
     const pesanStatus = status === 'TERLAMBAT'
@@ -418,6 +418,16 @@ function absenPulang(idBarcode) {
     if (!existing) {
       return { success: false, message: guru.nama + ' belum absen masuk hari ini.' };
     }
+
+    // Pastikan statusMasuk adalah HADIR atau TERLAMBAT (bukan IJIN/SAKIT/ALPA)
+    const statusMasuk = String(existing.data[5] || '').toUpperCase();
+    if (statusMasuk !== 'HADIR' && statusMasuk !== 'TERLAMBAT') {
+      return {
+        success: false,
+        message: guru.nama + ' tercatat ' + statusMasuk + ' hari ini, tidak bisa absen pulang.'
+      };
+    }
+
     if (existing.data[6]) {
       return {
         success:    false,
