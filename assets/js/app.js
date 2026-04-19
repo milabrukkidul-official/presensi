@@ -335,11 +335,18 @@ async function loadGuruDropdown(selectId) {
   if (!select) return;
   select.innerHTML = '<option value="">-- Memuat... --</option>';
   select.disabled = true;
+
+  // Dropdown pulang pakai endpoint berbeda: hanya guru yang sudah hadir & belum pulang
+  const action = (selectId === 'select-guru-pulang') ? 'getDataGuruHadir' : 'getDataGuru';
+  const emptyMsg = (selectId === 'select-guru-pulang')
+    ? '-- Belum ada guru yang perlu absen pulang --'
+    : '-- Semua guru sudah absen hari ini --';
+
   try {
-    const data = await apiCall('getDataGuru');
+    const data = await apiCall(action);
     if (!data.success) throw new Error(data.message);
     if (data.data.length === 0) {
-      select.innerHTML = '<option value="">-- Semua guru sudah absen hari ini --</option>';
+      select.innerHTML = '<option value="">' + emptyMsg + '</option>';
       select.disabled = true;
       return;
     }
@@ -502,11 +509,125 @@ async function submitAbsenPulang() {
     if (data.success) {
       showToast(data.message, 'success');
       renderHasilAbsen('pulang-result', data);
+      // Reload dropdown — guru yang baru pulang otomatis hilang dari daftar
+      loadGuruDropdown('select-guru-pulang');
+      select.value = '';
     } else {
       showToast(data.message, 'error');
     }
   } catch(e) { showToast(e.message, 'error'); }
   finally { btn.disabled = false; btn.innerHTML = '🏠 Catat Kepulangan'; }
+}
+
+// ============================================================
+// SCAN BARCODE PULANG (di halaman pulang)
+// ============================================================
+var html5QrCodePulang = null;
+var isScanningPulang  = false;
+
+function initScannerPulang() {
+  if (typeof Html5Qrcode === 'undefined') {
+    showToast('Library scanner belum dimuat', 'error');
+    return;
+  }
+  const readerEl = document.getElementById('reader-pulang');
+  if (!readerEl) return;
+  if (html5QrCodePulang) { startScannerPulang(); return; }
+  html5QrCodePulang = new Html5Qrcode('reader-pulang');
+  startScannerPulang();
+}
+
+function startScannerPulang() {
+  if (isScanningPulang || !html5QrCodePulang) return;
+  html5QrCodePulang.start(
+    { facingMode: 'environment' },
+    { fps: 10, qrbox: { width: 220, height: 220 } },
+    onScanPulangSuccess,
+    function() {}
+  ).then(function() { isScanningPulang = true; })
+   .catch(function(err) { showToast('Kamera: ' + err, 'error'); });
+}
+
+function stopScannerPulang() {
+  if (!isScanningPulang || !html5QrCodePulang) return;
+  html5QrCodePulang.stop().then(function() { isScanningPulang = false; }).catch(function(){});
+}
+
+async function onScanPulangSuccess(decodedText) {
+  if (!decodedText) return;
+  stopScannerPulang();
+
+  const rc = document.getElementById('pulang-scan-result');
+  if (rc) {
+    rc.classList.remove('show');
+    rc.innerHTML = loadingHtml('Memproses absen pulang...');
+    rc.classList.add('show');
+  }
+
+  try {
+    const data = await apiCall('absenPulang', { idBarcode: decodedText });
+    renderScanPulangResult(data, decodedText);
+    if (data.success) {
+      // Reload dropdown manual agar sinkron
+      loadGuruDropdown('select-guru-pulang');
+    }
+  } catch(e) {
+    renderScanPulangResult({ success: false, message: e.message }, decodedText);
+  }
+}
+
+function renderScanPulangResult(data, idBarcode) {
+  const rc = document.getElementById('pulang-scan-result');
+  if (!rc) return;
+  const ok    = data.success;
+  const icon  = ok ? '✅' : '❌';
+  const color = ok ? 'var(--success)' : 'var(--danger)';
+  const foto  = data.urlFoto
+    ? '<img class="result-foto" src="'+data.urlFoto+'" alt="" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'"><div class="result-foto-placeholder" style="display:none">👤</div>'
+    : '<div class="result-foto-placeholder">👤</div>';
+
+  rc.innerHTML =
+    '<div style="text-align:center;margin-bottom:16px">' +
+      '<div style="font-size:2.5rem;margin-bottom:8px">'+icon+'</div>' +
+      '<div style="font-size:1rem;font-weight:700;color:'+color+'">'+(data.message||(ok?'Berhasil!':'Gagal!'))+'</div>' +
+    '</div>' +
+    (data.nama ?
+      '<div class="result-guru">'+foto+'<div><div class="result-nama">'+data.nama+'</div><div class="result-info">ID: '+idBarcode+'</div></div></div>' +
+      '<div class="result-detail">' +
+        '<div class="result-row"><span class="label">Tanggal</span><span class="value">'+(data.tanggal||WaktuID.formatTanggal())+'</span></div>' +
+        '<div class="result-row"><span class="label">Jam Pulang</span><span class="value">'+(data.jam||WaktuID.formatJam())+'</span></div>' +
+        '<div class="result-row"><span class="label">Status</span><span class="value">'+(data.status||'-')+'</span></div>' +
+      '</div>'
+    : '') +
+    '<div style="display:flex;gap:10px">' +
+      '<button class="btn btn-outline" style="flex:1" onclick="resetScannerPulang()">📷 Scan Lagi</button>' +
+      '<button class="btn btn-primary" style="flex:1" onclick="navigateTo(\'home\')">🏠 Beranda</button>' +
+    '</div>';
+  rc.classList.add('show');
+}
+
+function resetScannerPulang() {
+  const rc = document.getElementById('pulang-scan-result');
+  if (rc) rc.classList.remove('show');
+  startScannerPulang();
+}
+
+function toggleScanPulang() {
+  const scanArea = document.getElementById('pulang-scan-area');
+  const btn      = document.getElementById('btn-toggle-scan-pulang');
+  if (!scanArea) return;
+  const isHidden = scanArea.style.display === 'none' || scanArea.style.display === '';
+  if (isHidden) {
+    scanArea.style.display = 'block';
+    if (btn) btn.innerHTML = '⛔ Tutup Scanner';
+    setTimeout(initScannerPulang, 300);
+  } else {
+    scanArea.style.display = 'none';
+    if (btn) btn.innerHTML = '📷 Scan Barcode Pulang';
+    stopScannerPulang();
+    const rc = document.getElementById('pulang-scan-result');
+    if (rc) rc.classList.remove('show');
+  }
 }
 
 function renderHasilAbsen(elId, data) {
@@ -890,6 +1011,7 @@ document.addEventListener('DOMContentLoaded', function() {
         setTimeout(initScanner, 300);
       } else {
         if (isScanning) stopScanner();
+        if (isScanningPulang) stopScannerPulang();
         navigateTo(target);
       }
     });
