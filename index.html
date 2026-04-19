@@ -7,6 +7,9 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <!-- PWA: agar bisa di-install dan berjalan fullscreen dari homescreen -->
+  <meta name="apple-touch-fullscreen" content="yes">
+  <link rel="manifest" href="manifest.json">
   <title>Presensi Guru</title>
   <link rel="stylesheet" href="assets/css/style.css">
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
@@ -38,6 +41,9 @@
   <!-- Tombol admin: tampil ikon kunci jika belum login, ikon orang jika sudah -->
   <button class="header-btn" id="btn-admin-header" onclick="handleAdminHeaderClick()" title="Admin">
     <span id="admin-header-icon">&#x1F512;</span>
+  </button>
+  <button class="header-btn" id="btn-fullscreen" onclick="toggleFullscreen()" title="Fullscreen" style="margin-left:6px">
+    <span id="fullscreen-icon">&#x26F6;</span>
   </button>
 </header>
 
