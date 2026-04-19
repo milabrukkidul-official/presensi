@@ -714,8 +714,65 @@ function getDataGuru() {
 }
 
 // ============================================================
-// LOGIN ADMIN
+// AMBIL DATA GURU YANG SUDAH HADIR TAPI BELUM PULANG
+// (untuk dropdown absen kepulangan)
+// Hanya guru dengan statusMasuk HADIR atau TERLAMBAT
+// dan belum memiliki jamPulang hari ini yang ditampilkan.
 // ============================================================
+function getDataGuruHadir() {
+  try {
+    const ss        = SpreadsheetApp.getActiveSpreadsheet();
+    const sheetGuru = ss.getSheetByName(SHEET_GURU);
+    const sheetPres = ss.getSheetByName(SHEET_PRESENSI);
+
+    const dataGuru = sheetGuru.getDataRange().getValues();
+    const dataPres = sheetPres.getDataRange().getValues();
+
+    const now     = new Date();
+    const tanggal = formatTanggalIndonesia(now);
+
+    // Buat map presensi hari ini: id → { statusMasuk, sudahPulang }
+    const mapPresensi = {};
+    for (let i = 1; i < dataPres.length; i++) {
+      let tglBaris = dataPres[i][1];
+      if (tglBaris instanceof Date) {
+        tglBaris = formatTanggalIndonesia(tglBaris);
+      } else {
+        tglBaris = String(tglBaris).trim();
+      }
+      if (tglBaris === tanggal) {
+        const id          = String(dataPres[i][2]).trim();
+        const statusMasuk = String(dataPres[i][5] || '').toUpperCase();
+        const jamPulang   = dataPres[i][6];
+        mapPresensi[id] = {
+          statusMasuk:  statusMasuk,
+          sudahPulang:  jamPulang !== null && jamPulang !== undefined && jamPulang !== ''
+        };
+      }
+    }
+
+    // Kembalikan hanya guru yang sudah hadir/terlambat dan belum pulang
+    const result = [];
+    for (let i = 1; i < dataGuru.length; i++) {
+      if (!dataGuru[i][0]) continue;
+      const id   = String(dataGuru[i][2]).trim();
+      const pres = mapPresensi[id];
+      if (!pres) continue; // belum absen masuk sama sekali
+      if (pres.statusMasuk !== 'HADIR' && pres.statusMasuk !== 'TERLAMBAT') continue;
+      if (pres.sudahPulang) continue; // sudah pulang
+      result.push({
+        no:        dataGuru[i][0],
+        nama:      dataGuru[i][1],
+        idBarcode: id,
+        urlFoto:   dataGuru[i][3]
+      });
+    }
+
+    return { success: true, data: result };
+  } catch (e) {
+    return { success: false, message: e.message };
+  }
+}
 function loginAdmin(password) {
   const savedPass = getSetting('PASSWORD_ADMIN') || 'admin123';
   if (password === savedPass) {
@@ -757,6 +814,9 @@ function doGet(e) {
         break;
       case 'getDataGuru':
         result = getDataGuru();
+        break;
+      case 'getDataGuruHadir':
+        result = getDataGuruHadir();
         break;
       case 'loginAdmin':
         result = loginAdmin(e.parameter.password);
@@ -808,6 +868,9 @@ function doPost(e) {
         break;
       case 'getDataGuru':
         result = getDataGuru();
+        break;
+      case 'getDataGuruHadir':
+        result = getDataGuruHadir();
         break;
       case 'loginAdmin':
         result = loginAdmin(params.password);
