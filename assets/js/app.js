@@ -996,11 +996,66 @@ function cetakWindow(data, namaKepsek, tempatTtd, tglTtd) {
 }
 
 // ============================================================
+// FULLSCREEN
+// ============================================================
+function requestFullscreen() {
+  const el = document.documentElement;
+  const fn = el.requestFullscreen || el.webkitRequestFullscreen ||
+             el.mozRequestFullScreen || el.msRequestFullscreen;
+  if (fn) fn.call(el).catch(function() {});
+}
+
+function exitFullscreen() {
+  const fn = document.exitFullscreen || document.webkitExitFullscreen ||
+             document.mozCancelFullScreen || document.msExitFullscreen;
+  if (fn) fn.call(document).catch(function() {});
+}
+
+function isFullscreen() {
+  return !!(document.fullscreenElement || document.webkitFullscreenElement ||
+            document.mozFullScreenElement || document.msFullscreenElement);
+}
+
+function toggleFullscreen() {
+  if (isFullscreen()) {
+    exitFullscreen();
+  } else {
+    requestFullscreen();
+  }
+}
+
+function updateFullscreenIcon() {
+  const icon = document.getElementById('fullscreen-icon');
+  if (!icon) return;
+  // ⛶ = masuk fullscreen, ✕ = keluar fullscreen
+  icon.textContent = isFullscreen() ? '\u2715' : '\u26F6';
+}
+
+// ============================================================
 // INISIALISASI
 // ============================================================
 document.addEventListener('DOMContentLoaded', function() {
   startClock();
   navigateTo('home');
+
+  // Update ikon fullscreen saat status berubah (tombol Esc, dll)
+  ['fullscreenchange','webkitfullscreenchange','mozfullscreenchange','MSFullscreenChange']
+    .forEach(function(ev) {
+      document.addEventListener(ev, updateFullscreenIcon);
+    });
+
+  // Auto-request fullscreen saat interaksi pertama user
+  // (browser hanya izinkan fullscreen setelah ada gesture)
+  var fullscreenRequested = false;
+  function onFirstInteraction() {
+    if (fullscreenRequested) return;
+    fullscreenRequested = true;
+    requestFullscreen();
+    document.removeEventListener('click',     onFirstInteraction);
+    document.removeEventListener('touchstart', onFirstInteraction);
+  }
+  document.addEventListener('click',      onFirstInteraction, { once: true });
+  document.addEventListener('touchstart', onFirstInteraction, { once: true });
 
   // Navigasi bottom bar
   document.querySelectorAll('[data-nav]').forEach(function(el) {
