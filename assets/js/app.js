@@ -14,8 +14,9 @@ const CONFIG = {
 
 // ============================================================
 // STATE
+// sessionStorage: bertahan selama tab terbuka, hilang saat tab ditutup
 // ============================================================
-let isAdminLoggedIn  = false;
+let isAdminLoggedIn  = sessionStorage.getItem('admin_logged_in') === '1';
 let cachedSetting    = {};
 let currentLaporanMode = 'harian';   // harian | mingguan | bulanan
 let currentStatTab   = 'global';     // global | individu
@@ -830,6 +831,7 @@ async function submitLogin(){
     const data=await apiCall('loginAdmin',{password:pw});
     if(data.success){
       isAdminLoggedIn=true;
+      sessionStorage.setItem('admin_logged_in','1');
       if(err)err.style.display='none';
       closeLoginModal();
       updateAdminUI();
@@ -848,6 +850,7 @@ async function submitLogin(){
 }
 function logoutAdmin(){
   isAdminLoggedIn=false;
+  sessionStorage.removeItem('admin_logged_in');
   closeAdminMenu();
   updateAdminUI();
   // Kembali ke home dan tampilkan nav tamu
@@ -911,6 +914,7 @@ function saveApiUrl(){
 // ============================================================
 document.addEventListener('DOMContentLoaded',function(){
   startClock();
+  updateAdminUI();   // restore tampilan nav sesuai status session
   navigateTo('home');
 
   // Nav tamu
