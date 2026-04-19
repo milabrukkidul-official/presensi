@@ -33,8 +33,17 @@ body {
   background: var(--bg);
   color: var(--text);
   min-height: 100vh;
+  /* Gunakan safe-area-inset agar konten tidak tertutup notch/status bar */
+  min-height: -webkit-fill-available;
   overflow-x: hidden;
   padding-bottom: calc(var(--nav-h) + 16px);
+}
+
+/* Fullscreen: pastikan body mengisi seluruh layar */
+:fullscreen body,
+:-webkit-full-screen body,
+:-moz-full-screen body {
+  min-height: 100vh;
 }
 
 /* ============================================================
