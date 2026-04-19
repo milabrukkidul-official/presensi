@@ -5,7 +5,7 @@
 // ============================================================
 // KONFIGURASI — isi HARDCODED_URL setelah deploy GAS
 // ============================================================
-const HARDCODED_URL = 'GANTI_DENGAN_URL_WEB_APP_ANDA';
+const HARDCODED_URL = 'https://script.google.com/macros/s/AKfycbxWQ-Q9TKP7TJs_BZw27HUrcUodMwoXedAq-fGQek_v6A88xx6n4eQeVQ9leDgskYTlDw/exec';
 
 const CONFIG = {
   get API_URL() { return localStorage.getItem('presensi_api_url') || HARDCODED_URL; },
