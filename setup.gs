@@ -85,9 +85,11 @@ function setupSpreadsheet() {
     ['NAMA_SEKOLAH',     'SMA Negeri 1 Contoh',            'Nama sekolah/instansi'],
     ['NAMA_KEPSEK',      'Drs. Nama Kepala Sekolah, M.Pd', 'Nama kepala sekolah (untuk laporan)'],
     ['LOGO_URL',         '',                               'URL logo sekolah (kosongkan jika tidak ada)'],
-    ['JAM_MASUK',        '07:00',                          'Batas jam masuk (HH:mm)'],
-    ['JAM_PULANG',       '14:00',                          'Jam pulang normal (HH:mm)'],
-    ['TERLAMBAT_MENIT',  '15',                             'Toleransi keterlambatan (menit)'],
+    ['JAM_MASUK_AWAL',   '05:30',                          'Jam paling awal boleh absen masuk (HH:mm)'],
+    ['JAM_MASUK_NORMAL', '07:00',                          'Batas jam masuk normal/tidak terlambat (HH:mm)'],
+    ['JAM_PULANG_AWAL',    '11:00',                          'Jam paling awal boleh absen pulang — tercatat MENDAHULUI (HH:mm)'],
+    ['JAM_PULANG_NORMAL', '13:00',                          'Batas jam pulang normal — di bawah ini tercatat MENDAHULUI (HH:mm)'],
+    ['JAM_PULANG_AKHIR',  '17:00',                          'Batas maksimal absen pulang (HH:mm)'],
     ['PASSWORD_ADMIN',   'admin123',                       'Password login admin'],
     ['TAHUN_AJARAN',     '2025/2026',                      'Tahun ajaran aktif'],
   ];
@@ -115,6 +117,11 @@ function setupSpreadsheet() {
     '• DATA_GURU - Data master guru\n' +
     '• PRESENSI  - Rekap presensi harian\n' +
     '• SETTING   - Konfigurasi sistem\n\n' +
+    'Pengaturan jam di sheet SETTING:\n' +
+    '• JAM_MASUK_AWAL   = 05:30 (mulai bisa absen masuk)\n' +
+    '• JAM_MASUK_NORMAL = 07:00 (batas tidak terlambat)\n' +
+    '• JAM_PULANG_AWAL  = 13:00 (mulai bisa absen pulang)\n' +
+    '• JAM_PULANG_AKHIR = 17:00 (batas maksimal pulang)\n\n' +
     'Langkah selanjutnya:\n' +
     '1. Isi data guru di sheet DATA_GURU\n' +
     '2. Sesuaikan pengaturan di sheet SETTING\n' +
@@ -144,6 +151,8 @@ function formatJamIndonesia(date) {
 
 // ============================================================
 // HELPER: AMBIL SETTING
+// Selalu kembalikan sebagai String agar aman dari masalah
+// Google Sheets yang kadang mengkonversi nilai ke Date/Number
 // ============================================================
 function getSetting(key) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -151,9 +160,28 @@ function getSetting(key) {
   if (!sheet) return null;
   const data = sheet.getDataRange().getValues();
   for (let i = 1; i < data.length; i++) {
-    if (data[i][0] === key) return data[i][1];
+    if (data[i][0] === key) {
+      const val = data[i][1];
+      if (val === null || val === undefined || val === '') return null;
+      // Jika Google Sheets mengkonversi jam ke objek Date, format ulang ke HH:mm
+      if (val instanceof Date) {
+        const h  = String(val.getHours()).padStart(2, '0');
+        const mn = String(val.getMinutes()).padStart(2, '0');
+        return h + ':' + mn;
+      }
+      return String(val);
+    }
   }
   return null;
+}
+
+// ============================================================
+// HELPER: KONVERSI STRING JAM "HH:mm" KE MENIT
+// ============================================================
+function jamKeMenit(jamStr) {
+  if (!jamStr) return 0;
+  const parts = String(jamStr).split(':');
+  return parseInt(parts[0] || 0) * 60 + parseInt(parts[1] || 0);
 }
 
 // ============================================================
@@ -206,12 +234,17 @@ function getNomorPresensi() {
 
 // ============================================================
 // ABSEN MASUK (SCAN BARCODE)
+// Aturan:
+//   05:30 - 07:00 → HADIR (normal)
+//   > 07:00       → TERLAMBAT (tetap bisa absen)
+//   < 05:30       → ditolak (terlalu awal)
 // ============================================================
 function absenMasuk(idBarcode) {
   try {
     const now     = new Date();
     const tanggal = formatTanggalIndonesia(now);
     const jam     = formatJamIndonesia(now);
+    const menitNow = now.getHours() * 60 + now.getMinutes();
 
     // Cari data guru
     const guru = cariGuru(idBarcode);
@@ -223,42 +256,53 @@ function absenMasuk(idBarcode) {
     const existing = cekPresensiHariIni(idBarcode, tanggal);
     if (existing && existing.data[4]) {
       return {
-        success: false,
-        message: guru.nama + ' sudah absen masuk hari ini pukul ' + existing.data[4],
-        guru: guru,
+        success:    false,
+        message:    guru.nama + ' sudah absen masuk hari ini pukul ' + existing.data[4],
         sudahAbsen: true
       };
     }
 
-    // Tentukan status (tepat waktu / terlambat)
-    const jamMasukBatas  = getSetting('JAM_MASUK') || '07:00';
-    const toleransiMenit = parseInt(getSetting('TERLAMBAT_MENIT') || '15');
-    const [bH, bM]       = jamMasukBatas.split(':').map(Number);
-    const batasMenit      = bH * 60 + bM + toleransiMenit;
-    const jamSekarangMnt  = now.getHours() * 60 + now.getMinutes();
-    const status          = jamSekarangMnt <= batasMenit ? 'HADIR' : 'TERLAMBAT';
+    // Ambil batas jam dari setting (dengan fallback aman)
+    const jamMasukAwal   = getSetting('JAM_MASUK_AWAL')   || '05:30';
+    const jamMasukNormal = getSetting('JAM_MASUK_NORMAL') || '07:00';
+
+    const menitAwal   = jamKeMenit(jamMasukAwal);
+    const menitNormal = jamKeMenit(jamMasukNormal);
+
+    // Tolak jika terlalu awal
+    if (menitNow < menitAwal) {
+      return {
+        success: false,
+        message: 'Absen masuk belum dibuka. Dibuka mulai pukul ' + jamMasukAwal + '.'
+      };
+    }
+
+    // Tentukan status
+    const status = menitNow <= menitNormal ? 'HADIR' : 'TERLAMBAT';
 
     const ss    = SpreadsheetApp.getActiveSpreadsheet();
     const sheet = ss.getSheetByName(SHEET_PRESENSI);
 
     if (existing) {
-      // Update baris yang sudah ada (absen manual sebelumnya)
       sheet.getRange(existing.row, 5).setValue(jam);
       sheet.getRange(existing.row, 6).setValue(status);
     } else {
-      // Tambah baris baru
       const no = getNomorPresensi();
       sheet.appendRow([no, tanggal, idBarcode, guru.nama, jam, status, '', '', '']);
     }
 
+    const pesanStatus = status === 'TERLAMBAT'
+      ? 'Absen masuk berhasil (TERLAMBAT - ' + jam + ')'
+      : 'Absen masuk berhasil!';
+
     return {
-      success:  true,
-      message:  'Absen masuk berhasil!',
-      nama:     guru.nama,
-      urlFoto:  guru.urlFoto,
-      tanggal:  tanggal,
-      jam:      jam,
-      status:   status
+      success: true,
+      message: pesanStatus,
+      nama:    guru.nama,
+      urlFoto: guru.urlFoto,
+      tanggal: tanggal,
+      jam:     jam,
+      status:  status
     };
   } catch (e) {
     return { success: false, message: 'Error: ' + e.message };
@@ -267,17 +311,51 @@ function absenMasuk(idBarcode) {
 
 // ============================================================
 // ABSEN PULANG (SCAN BARCODE)
+// Aturan:
+//   < 11:00        → ditolak (terlalu awal)
+//   11:00 - 12:59  → MENDAHULUI (boleh pulang, tercatat mendahului)
+//   13:00 - 17:00  → PULANG (normal)
+//   > 17:00        → ditolak (sudah lewat batas)
 // ============================================================
 function absenPulang(idBarcode) {
   try {
-    const now     = new Date();
-    const tanggal = formatTanggalIndonesia(now);
-    const jam     = formatJamIndonesia(now);
+    const now      = new Date();
+    const tanggal  = formatTanggalIndonesia(now);
+    const jam      = formatJamIndonesia(now);
+    const menitNow = now.getHours() * 60 + now.getMinutes();
 
     const guru = cariGuru(idBarcode);
     if (!guru) {
       return { success: false, message: 'ID Barcode tidak ditemukan: ' + idBarcode };
     }
+
+    // Ambil batas jam pulang dari setting
+    const jamPulangAwal    = getSetting('JAM_PULANG_AWAL')    || '11:00';
+    const jamPulangNormal  = getSetting('JAM_PULANG_NORMAL')  || '13:00';
+    const jamPulangAkhir   = getSetting('JAM_PULANG_AKHIR')   || '17:00';
+
+    const menitAwal   = jamKeMenit(jamPulangAwal);
+    const menitNormal = jamKeMenit(jamPulangNormal);
+    const menitAkhir  = jamKeMenit(jamPulangAkhir);
+
+    // Terlalu awal — ditolak
+    if (menitNow < menitAwal) {
+      return {
+        success: false,
+        message: 'Absen pulang belum dibuka. Dibuka mulai pukul ' + jamPulangAwal + '.'
+      };
+    }
+
+    // Sudah lewat batas — ditolak
+    if (menitNow > menitAkhir) {
+      return {
+        success: false,
+        message: 'Batas absen pulang sudah lewat (maks. pukul ' + jamPulangAkhir + ').'
+      };
+    }
+
+    // Tentukan status pulang
+    const statusPulang = menitNow < menitNormal ? 'MENDAHULUI' : 'PULANG';
 
     const existing = cekPresensiHariIni(idBarcode, tanggal);
     if (!existing) {
@@ -285,8 +363,8 @@ function absenPulang(idBarcode) {
     }
     if (existing.data[6]) {
       return {
-        success: false,
-        message: guru.nama + ' sudah absen pulang hari ini pukul ' + existing.data[6],
+        success:    false,
+        message:    guru.nama + ' sudah absen pulang hari ini pukul ' + existing.data[6],
         sudahAbsen: true
       };
     }
@@ -294,16 +372,20 @@ function absenPulang(idBarcode) {
     const ss    = SpreadsheetApp.getActiveSpreadsheet();
     const sheet = ss.getSheetByName(SHEET_PRESENSI);
     sheet.getRange(existing.row, 7).setValue(jam);
-    sheet.getRange(existing.row, 8).setValue('PULANG');
+    sheet.getRange(existing.row, 8).setValue(statusPulang);
+
+    const pesanStatus = statusPulang === 'MENDAHULUI'
+      ? 'Absen pulang berhasil (MENDAHULUI - sebelum pukul ' + jamPulangNormal + ')'
+      : 'Absen pulang berhasil!';
 
     return {
-      success:  true,
-      message:  'Absen pulang berhasil!',
-      nama:     guru.nama,
-      urlFoto:  guru.urlFoto,
-      tanggal:  tanggal,
-      jam:      jam,
-      status:   'PULANG'
+      success: true,
+      message: pesanStatus,
+      nama:    guru.nama,
+      urlFoto: guru.urlFoto,
+      tanggal: tanggal,
+      jam:     jam,
+      status:  statusPulang
     };
   } catch (e) {
     return { success: false, message: 'Error: ' + e.message };
@@ -399,22 +481,26 @@ function getPresensiHariIni() {
     }
 
     // Ambil setting
-    const namaSekolah = getSetting('NAMA_SEKOLAH') || 'Sistem Presensi';
-    const namaKepsek  = getSetting('NAMA_KEPSEK')  || '';
-    const logoUrl     = getSetting('LOGO_URL')     || '';
-    const jamMasuk    = getSetting('JAM_MASUK')    || '07:00';
-    const jamPulang   = getSetting('JAM_PULANG')   || '14:00';
+    const namaSekolah    = getSetting('NAMA_SEKOLAH')    || 'Sistem Presensi';
+    const namaKepsek     = getSetting('NAMA_KEPSEK')     || '';
+    const logoUrl        = getSetting('LOGO_URL')        || '';
+    const jamMasukAwal   = getSetting('JAM_MASUK_AWAL')  || '05:30';
+    const jamMasukNormal = getSetting('JAM_MASUK_NORMAL')|| '07:00';
+    const jamPulangAwal  = getSetting('JAM_PULANG_AWAL')   || '11:00';
+    const jamPulangAkhir = getSetting('JAM_PULANG_AKHIR')  || '17:00';
 
     return {
-      success:     true,
-      tanggal:     tanggal,
-      jam:         formatJamIndonesia(now),
-      namaSekolah: namaSekolah,
-      namaKepsek:  namaKepsek,
-      logoUrl:     logoUrl,
-      jamMasuk:    jamMasuk,
-      jamPulang:   jamPulang,
-      guru:        result
+      success:      true,
+      tanggal:      tanggal,
+      jam:          formatJamIndonesia(now),
+      namaSekolah:  namaSekolah,
+      namaKepsek:   namaKepsek,
+      logoUrl:      logoUrl,
+      jamMasukAwal:    jamMasukAwal,
+      jamMasukNormal:  jamMasukNormal,
+      jamPulangAwal:   jamPulangAwal,
+      jamPulangAkhir:  jamPulangAkhir,
+      guru:         result
     };
   } catch (e) {
     return { success: false, message: 'Error: ' + e.message };
