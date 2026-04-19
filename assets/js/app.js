@@ -14,7 +14,7 @@ const CONFIG = {
 // Setelah deploy GAS, salin URL-nya ke variabel API_URL di bawah.
 // Dengan cara ini tidak perlu copypaste setiap kali buka aplikasi.
 // ============================================================
-const API_URL = localStorage.getItem('https://script.google.com/macros/s/AKfycbxWQ-Q9TKP7TJs_BZw27HUrcUodMwoXedAq-fGQek_v6A88xx6n4eQeVQ9leDgskYTlDw/exec') || '';') || '',
+const API_URL = "https://script.google.com/macros/s/AKfycbxWQ-Q9TKP7TJs_BZw27HUrcUodMwoXedAq-fGQek_v6A88xx6n4eQeVQ9leDgskYTlDw/exec"
   // Contoh: 'https://script.google.com/macros/s/XXXX/exec'
 };
 
