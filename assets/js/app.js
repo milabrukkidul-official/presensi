@@ -93,7 +93,8 @@ async function apiCall(action, params) {
     throw new Error('__NO_URL__');
   }
 
-  const qp = new URLSearchParams(Object.assign({ action: action }, params));
+  // Tambahkan timestamp agar setiap request unik dan tidak di-cache
+  const qp = new URLSearchParams(Object.assign({ action: action, _t: Date.now() }, params));
   const fullUrl = url + '?' + qp.toString();
 
   let res;
@@ -337,6 +338,11 @@ async function loadGuruDropdown(selectId) {
   try {
     const data = await apiCall('getDataGuru');
     if (!data.success) throw new Error(data.message);
+    if (data.data.length === 0) {
+      select.innerHTML = '<option value="">-- Semua guru sudah absen hari ini --</option>';
+      select.disabled = true;
+      return;
+    }
     select.innerHTML = '<option value="">-- Pilih Guru --</option>';
     data.data.forEach(function(g) {
       select.innerHTML += '<option value="'+g.idBarcode+'">'+g.nama+'</option>';
@@ -468,6 +474,11 @@ async function submitAbsenManual() {
     if (data.success) {
       showToast(data.message, 'success');
       renderHasilAbsen('manual-result', data);
+      // Reload dropdown — guru yang baru diabsen otomatis hilang dari daftar
+      loadGuruDropdown('select-guru-manual');
+      select.value = '';
+      selectedKeterangan = '';
+      document.querySelectorAll('.ket-btn').forEach(function(b) { b.className = 'ket-btn'; });
     } else {
       showToast(data.message, 'error');
     }
