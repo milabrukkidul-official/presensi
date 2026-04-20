@@ -652,43 +652,68 @@ function getStatistik(tipe, params) {
     }
 
     if (tipe === 'global') {
-      // Hitung hari kerja unik
+      // Hitung hari kerja unik (tanggal yang ada di data presensi)
       var hariSet = {};
-      rows.forEach(function(r){ hariSet[r.tanggal] = true; });
-      var totalHariKerja = Object.keys(hariSet).length;
+      for (var h = 0; h < rows.length; h++) {
+        hariSet[rows[h].tanggal] = true;
+      }
+      var totalHariKerja = 0;
+      for (var hk in hariSet) { totalHariKerja++; }
 
-      // Rekap per guru
+      // Bangun map guru dari master DATA_GURU
       var mapGuru = {};
       for (var j = 1; j < dataGuru.length; j++) {
         if (!dataGuru[j][0]) continue;
         var id = String(dataGuru[j][2]).trim();
-        mapGuru[id] = { nama: dataGuru[j][1], hadir:0, terlambat:0, ijin:0, sakit:0, alpa:0 };
+        mapGuru[id] = {
+          nama:      String(dataGuru[j][1]),
+          hadir:     0,
+          terlambat: 0,
+          ijin:      0,
+          sakit:     0,
+          alpa:      0
+        };
       }
-      rows.forEach(function(r){
-        if (!mapGuru[r.idBarcode]) return;
-        var s = r.statusMasuk;
-        if (s === 'HADIR')     mapGuru[r.idBarcode].hadir++;
-        else if (s === 'TERLAMBAT') mapGuru[r.idBarcode].terlambat++;
-        else if (s === 'IJIN') mapGuru[r.idBarcode].ijin++;
-        else if (s === 'SAKIT') mapGuru[r.idBarcode].sakit++;
-        else if (s === 'ALPA') mapGuru[r.idBarcode].alpa++;
+
+      // Akumulasi dari data presensi
+      for (var r = 0; r < rows.length; r++) {
+        var row = rows[r];
+        if (!mapGuru[row.idBarcode]) continue;
+        var s = row.statusMasuk;
+        if      (s === 'HADIR')     mapGuru[row.idBarcode].hadir++;
+        else if (s === 'TERLAMBAT') mapGuru[row.idBarcode].terlambat++;
+        else if (s === 'IJIN')      mapGuru[row.idBarcode].ijin++;
+        else if (s === 'SAKIT')     mapGuru[row.idBarcode].sakit++;
+        else if (s === 'ALPA')      mapGuru[row.idBarcode].alpa++;
+      }
+
+      // Konversi map ke array (tanpa Object.values agar kompatibel semua GAS)
+      var perGuru = [];
+      for (var gid in mapGuru) {
+        perGuru.push(mapGuru[gid]);
+      }
+      perGuru.sort(function(a, b) {
+        return a.nama < b.nama ? -1 : a.nama > b.nama ? 1 : 0;
       });
 
-      var perGuru = Object.values(mapGuru).sort(function(a,b){ return a.nama.localeCompare(b.nama); });
       var totalGuru = perGuru.length || 1;
       var sumHadir = 0, sumTelat = 0, sumAbsen = 0;
-      perGuru.forEach(function(g){ sumHadir+=g.hadir; sumTelat+=g.terlambat; sumAbsen+=g.ijin+g.sakit+g.alpa; });
+      for (var pg = 0; pg < perGuru.length; pg++) {
+        sumHadir  += perGuru[pg].hadir;
+        sumTelat  += perGuru[pg].terlambat;
+        sumAbsen  += perGuru[pg].ijin + perGuru[pg].sakit + perGuru[pg].alpa;
+      }
 
       return {
-        success:       true,
-        tipe:          'global',
-        bulan:         bl,
-        tahun:         th,
+        success:        true,
+        tipe:           'global',
+        bulan:          bl,
+        tahun:          th,
         totalHariKerja: totalHariKerja,
-        rataHadir:     Math.round(sumHadir/totalGuru*10)/10,
-        rataTerlambat: Math.round(sumTelat/totalGuru*10)/10,
-        rataAbsen:     Math.round(sumAbsen/totalGuru*10)/10,
-        perGuru:       perGuru
+        rataHadir:      Math.round(sumHadir  / totalGuru * 10) / 10,
+        rataTerlambat:  Math.round(sumTelat  / totalGuru * 10) / 10,
+        rataAbsen:      Math.round(sumAbsen  / totalGuru * 10) / 10,
+        perGuru:        perGuru
       };
     }
 
@@ -825,6 +850,31 @@ function getLaporan(tipe, params) {
 function parseTanggalID(str) {
   var parts = str.split('-');
   return new Date(parseInt(parts[2]), parseInt(parts[1])-1, parseInt(parts[0]));
+}
+
+// ============================================================
+// AMBIL SEMUA GURU (master data, tanpa filter apapun)
+// Digunakan untuk dropdown statistik individu
+// ============================================================
+function getSemuaGuru() {
+  try {
+    const ss    = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName(SHEET_GURU);
+    const data  = sheet.getDataRange().getValues();
+    const result = [];
+    for (var i = 1; i < data.length; i++) {
+      if (!data[i][0]) continue;
+      result.push({
+        no:        data[i][0],
+        nama:      data[i][1],
+        idBarcode: String(data[i][2]).trim(),
+        urlFoto:   data[i][3]
+      });
+    }
+    return { success: true, data: result };
+  } catch (e) {
+    return { success: false, message: e.message };
+  }
 }
 
 // ============================================================
@@ -979,6 +1029,9 @@ function doGet(e) {
       case 'getDataGuru':
         result = getDataGuru();
         break;
+      case 'getSemuaGuru':
+        result = getSemuaGuru();
+        break;
       case 'getDataGuruHadir':
         result = getDataGuruHadir();
         break;
@@ -1039,6 +1092,9 @@ function doPost(e) {
         break;
       case 'getDataGuru':
         result = getDataGuru();
+        break;
+      case 'getSemuaGuru':
+        result = getSemuaGuru();
         break;
       case 'getDataGuruHadir':
         result = getDataGuruHadir();
