@@ -742,9 +742,8 @@ async function loadGuruDropdownStatistik(){
   const sel=document.getElementById('stat-guru-select'); if(!sel)return;
   sel.innerHTML='<option value="">-- Memuat... --</option>'; sel.disabled=true;
   try {
-    // Pakai getDataGuru (semua guru, tidak difilter status absen)
-    // berbeda dengan getDataGuruHadir yang hanya guru yang sudah hadir
-    const data=await apiCall('getDataGuru');
+    // getSemuaGuru: semua guru dari master data, tidak difilter status absen harian
+    const data=await apiCall('getSemuaGuru');
     if(!data.success) throw new Error(data.message);
     sel.innerHTML='<option value="">-- Pilih Guru --</option>';
     data.data.forEach(function(g){
