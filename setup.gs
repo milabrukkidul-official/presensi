@@ -618,6 +618,59 @@ function getPresensiHariIni() {
 }
 
 // ============================================================
+// DEBUG: Kembalikan 5 baris pertama PRESENSI untuk cek format data
+// Akses via: URL_WEB_APP?action=debugPresensi
+// ============================================================
+function debugPresensi() {
+  try {
+    const ss    = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName(SHEET_PRESENSI);
+    const data  = sheet.getDataRange().getValues();
+    var sample  = [];
+    for (var i = 1; i < Math.min(data.length, 6); i++) {
+      var tglRaw = data[i][1];
+      sample.push({
+        row:          i + 1,
+        tglRaw:       String(tglRaw),
+        tglType:      typeof tglRaw,
+        isDate:       tglRaw instanceof Date,
+        tglParsed:    parseTanggalSheet(tglRaw),
+        idBarcode:    String(data[i][2]).trim(),
+        statusMasuk:  String(data[i][5] || ''),
+        statusPulang: String(data[i][7] || '')
+      });
+    }
+    return { success: true, totalRows: data.length - 1, sample: sample };
+  } catch(e) {
+    return { success: false, message: e.message };
+  }
+}
+
+// ============================================================
+// HELPER: PARSE TANGGAL DARI SPREADSHEET KE FORMAT DD-MM-YYYY
+// Menangani kasus kolom berisi objek Date ATAU string DD-MM-YYYY
+// ============================================================
+function parseTanggalSheet(val) {
+  if (!val) return '';
+  // Jika Google Sheets menyimpan sebagai objek Date
+  if (val instanceof Date) {
+    return formatTanggalIndonesia(val);
+  }
+  var s = String(val).trim();
+  // Sudah format DD-MM-YYYY
+  if (/^\d{2}-\d{2}-\d{4}$/.test(s)) return s;
+  // Format YYYY-MM-DD (ISO)
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
+    var p = s.substring(0, 10).split('-');
+    return p[2] + '-' + p[1] + '-' + p[0];
+  }
+  // Coba parse sebagai Date jika format lain
+  var d = new Date(s);
+  if (!isNaN(d.getTime())) return formatTanggalIndonesia(d);
+  return s;
+}
+
+// ============================================================
 // AMBIL STATISTIK (global / individu per bulan)
 // ============================================================
 function getStatistik(tipe, params) {
@@ -632,23 +685,27 @@ function getStatistik(tipe, params) {
     const th = parseInt(params.tahun);
 
     // Filter baris presensi bulan & tahun yang diminta
+    // Gunakan parseTanggalSheet agar aman dari format Date objek
     var rows = [];
     for (var i = 1; i < dataPres.length; i++) {
-      var tglStr = String(dataPres[i][1]).trim(); // DD-MM-YYYY
+      if (!dataPres[i][1]) continue;
+      var tglStr = parseTanggalSheet(dataPres[i][1]); // selalu DD-MM-YYYY
       var parts  = tglStr.split('-');
       if (parts.length < 3) continue;
-      if (parseInt(parts[1]) === bl && parseInt(parts[2]) === th) {
-        rows.push({
-          tanggal:     tglStr,
-          idBarcode:   String(dataPres[i][2]).trim(),
-          nama:        dataPres[i][3],
-          jamMasuk:    dataPres[i][4] || '-',
-          statusMasuk: String(dataPres[i][5] || '').toUpperCase(),
-          jamPulang:   dataPres[i][6] || '-',
-          statusPulang: String(dataPres[i][7] || '').toUpperCase(),
-          keterangan:  dataPres[i][8] || ''
-        });
-      }
+      var barisBulan = parseInt(parts[1]);
+      var barisTahun = parseInt(parts[2]);
+      if (barisBulan !== bl || barisTahun !== th) continue;
+
+      rows.push({
+        tanggal:      tglStr,
+        idBarcode:    String(dataPres[i][2]).trim(),
+        nama:         String(dataPres[i][3] || ''),
+        jamMasuk:     dataPres[i][4] ? String(dataPres[i][4]) : '-',
+        statusMasuk:  String(dataPres[i][5] || '').trim().toUpperCase(),
+        jamPulang:    dataPres[i][6] ? String(dataPres[i][6]) : '-',
+        statusPulang: String(dataPres[i][7] || '').trim().toUpperCase(),
+        keterangan:   String(dataPres[i][8] || '')
+      });
     }
 
     if (tipe === 'global') {
@@ -1053,6 +1110,9 @@ function doGet(e) {
           tahun:     e.parameter.tahun     || '',
           idBarcode: e.parameter.idBarcode || ''
         });
+        break;
+      case 'debugPresensi':
+        result = debugPresensi();
         break;
       default:
         result = { success: false, message: 'Action tidak dikenal: ' + action };
