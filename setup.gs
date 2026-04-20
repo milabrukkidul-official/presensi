@@ -133,19 +133,22 @@ function setupSpreadsheet() {
 }
 
 // ============================================================
-// HELPER: FORMAT TANGGAL INDONESIA (DD-MM-YYYY) — WIB
-// Menggunakan Utilities.formatDate dengan timezone Asia/Jakarta
-// agar selalu akurat tanpa perlu hitung offset manual
+// HELPER: FORMAT TANGGAL INDONESIA (DD-MM-YYYY)
+// Menggunakan Utilities.formatDate dengan timezone spreadsheet
+// agar tidak ada double-offset atau selisih waktu
 // ============================================================
 function formatTanggalIndonesia(date) {
-  return Utilities.formatDate(date, 'Asia/Jakarta', 'dd-MM-yyyy');
+  const tz = SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone();
+  return Utilities.formatDate(date, tz, 'dd-MM-yyyy');
 }
 
 // ============================================================
-// HELPER: FORMAT JAM INDONESIA (HH:mm) — WIB
+// HELPER: FORMAT JAM INDONESIA (HH:mm)
+// Menggunakan Utilities.formatDate dengan timezone spreadsheet
 // ============================================================
 function formatJamIndonesia(date) {
-  return Utilities.formatDate(date, 'Asia/Jakarta', 'HH:mm');
+  const tz = SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone();
+  return Utilities.formatDate(date, tz, 'HH:mm');
 }
 
 // ============================================================
@@ -163,21 +166,12 @@ function getSetting(key) {
       const val = data[i][1];
       if (val === null || val === undefined || val === '') return null;
 
-      // Google Sheets menyimpan nilai waktu (time-only) sebagai objek Date
-      // dengan epoch 1899-12-30. Nilai numeriknya adalah fraksi desimal dari 1 hari.
-      // Contoh: 07:00 = 0.291666... (7/24)
-      // Cara paling aman: ambil nilai numerik dari sheet (bukan lewat Date object)
-      // lalu konversi manual agar tidak terpengaruh timezone server GAS.
+      // Google Sheets menyimpan nilai waktu (time-only) sebagai objek Date.
+      // Gunakan Utilities.formatDate dengan timezone spreadsheet
+      // agar tidak ada selisih akibat offset manual.
       if (val instanceof Date) {
-        // Hitung total menit dari fraksi hari
-        // getTime() pada epoch 1899-12-30 memberikan milidetik sejak 1899-12-30 00:00 UTC
-        const EPOCH_1899  = -2209161600000; // ms dari Unix epoch ke 1899-12-30 00:00 UTC
-        const OFFSET_WIB  = 7 * 60;        // UTC+7 dalam menit
-        const msFromEpoch = val.getTime() - EPOCH_1899;
-        const totalMenit  = Math.round(msFromEpoch / 60000) + OFFSET_WIB;
-        const h  = String(Math.floor(totalMenit / 60) % 24).padStart(2, '0');
-        const mn = String(totalMenit % 60).padStart(2, '0');
-        return h + ':' + mn;
+        const tz = SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone();
+        return Utilities.formatDate(val, tz, 'HH:mm');
       }
       return String(val);
     }
@@ -198,8 +192,8 @@ function jamKeMenit(jamStr) {
 // HELPER: KONVERSI NILAI JAM DARI SPREADSHEET KE "HH:mm"
 // Menangani 3 kemungkinan format yang dikembalikan Google Sheets:
 //   1. String "HH:mm" atau "HH:mm:ss"  → potong ke HH:mm
-//   2. Objek Date dengan epoch 1899-12-30 (time-only cell)
-//   3. Angka desimal fraksi hari (0.0 - 1.0)
+//   2. Objek Date (time-only cell)      → format via Utilities
+//   3. Angka desimal fraksi hari        → konversi langsung
 // ============================================================
 function nilaiJamKeString(val) {
   if (val === null || val === undefined || val === '') return '-';
@@ -208,7 +202,6 @@ function nilaiJamKeString(val) {
   if (typeof val === 'string') {
     const trimmed = val.trim();
     if (trimmed === '' || trimmed === '-') return '-';
-    // Ambil hanya HH:mm (buang detik jika ada)
     const parts = trimmed.split(':');
     if (parts.length >= 2) {
       return parts[0].padStart(2,'0') + ':' + parts[1].padStart(2,'0');
@@ -216,21 +209,15 @@ function nilaiJamKeString(val) {
     return trimmed;
   }
 
-  // Kasus 2: objek Date (epoch 1899-12-30 untuk time-only cell)
+  // Kasus 2: objek Date — gunakan Utilities.formatDate (timezone-aware)
   if (val instanceof Date) {
-    const EPOCH_1899  = -2209161600000; // ms dari Unix epoch ke 1899-12-30 00:00 UTC
-    const OFFSET_WIB  = 7 * 60;        // UTC+7 dalam menit
-    const msFromEpoch = val.getTime() - EPOCH_1899;
-    const totalMenit  = Math.round(msFromEpoch / 60000) + OFFSET_WIB;
-    const h  = String(Math.floor(totalMenit / 60) % 24).padStart(2, '0');
-    const mn = String(totalMenit % 60).padStart(2, '0');
-    return h + ':' + mn;
+    const tz = SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone();
+    return Utilities.formatDate(val, tz, 'HH:mm');
   }
 
-  // Kasus 3: angka desimal fraksi hari (misal 0.291666 = 07:00)
+  // Kasus 3: angka desimal fraksi hari (misal 0.291666 = 07:00), tanpa offset
   if (typeof val === 'number') {
-    const OFFSET_WIB = 7 * 60; // UTC+7 dalam menit
-    const totalMenit = Math.round(val * 24 * 60) + OFFSET_WIB;
+    const totalMenit = Math.round(val * 24 * 60);
     const h  = String(Math.floor(totalMenit / 60) % 24).padStart(2, '0');
     const mn = String(totalMenit % 60).padStart(2, '0');
     return h + ':' + mn;
@@ -306,9 +293,9 @@ function absenMasuk(idBarcode) {
     const now     = new Date();
     const tanggal = formatTanggalIndonesia(now);
     const jam     = formatJamIndonesia(now);
-    // Hitung menit WIB menggunakan Utilities.formatDate (akurat, tidak perlu offset manual)
-    const jamWIB   = Utilities.formatDate(now, 'Asia/Jakarta', 'HH:mm');
-    const menitNow = parseInt(jamWIB.split(':')[0]) * 60 + parseInt(jamWIB.split(':')[1]);
+    // Ambil jam & menit dari formatJamIndonesia (sudah timezone-aware)
+    const jamParts = jam.split(':');
+    const menitNow = parseInt(jamParts[0]) * 60 + parseInt(jamParts[1]);
 
     // Cari data guru
     const guru = cariGuru(idBarcode);
@@ -387,9 +374,9 @@ function absenPulang(idBarcode) {
     const now      = new Date();
     const tanggal  = formatTanggalIndonesia(now);
     const jam      = formatJamIndonesia(now);
-    // Hitung menit WIB menggunakan Utilities.formatDate (akurat, tidak perlu offset manual)
-    const jamWIB   = Utilities.formatDate(now, 'Asia/Jakarta', 'HH:mm');
-    const menitNow = parseInt(jamWIB.split(':')[0]) * 60 + parseInt(jamWIB.split(':')[1]);
+    // Ambil jam & menit dari formatJamIndonesia (sudah timezone-aware)
+    const jamParts = jam.split(':');
+    const menitNow = parseInt(jamParts[0]) * 60 + parseInt(jamParts[1]);
 
     const guru = cariGuru(idBarcode);
     if (!guru) {
@@ -397,17 +384,19 @@ function absenPulang(idBarcode) {
     }
 
     // Ambil batas jam pulang dari setting
-    // JAM_PULANG_NORMAL berbeda tergantung hari (Jumat & Sabtu lebih awal)
-    const hariWIB = wib.getUTCDay(); // 0=Minggu, 1=Senin, ..., 5=Jumat, 6=Sabtu
+    // JAM_PULANG_NORMAL berbeda tergantung hari
+    const tz      = SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone();
+    const hariStr = Utilities.formatDate(now, tz, 'u'); // 1=Senin ... 7=Minggu (ISO)
+    const hariNum = parseInt(hariStr); // 5=Jumat, 6=Sabtu
 
     const jamPulangAwal   = getSetting('JAM_PULANG_AWAL')   || '09:00';
     const jamPulangAkhir  = getSetting('JAM_PULANG_AKHIR')  || '17:00';
 
     let jamPulangNormal;
-    if (hariWIB === 5) {
+    if (hariNum === 5) {
       // Jumat
       jamPulangNormal = getSetting('JAM_PULANG_NORMAL_JUMAT') || '10:00';
-    } else if (hariWIB === 6) {
+    } else if (hariNum === 6) {
       // Sabtu
       jamPulangNormal = getSetting('JAM_PULANG_NORMAL_SABTU') || '11:00';
     } else {
