@@ -133,26 +133,19 @@ function setupSpreadsheet() {
 }
 
 // ============================================================
-// HELPER: FORMAT TANGGAL INDONESIA (DD-MM-YYYY) — WIB (UTC+7)
+// HELPER: FORMAT TANGGAL INDONESIA (DD-MM-YYYY) — WIB
+// Menggunakan Utilities.formatDate dengan timezone Asia/Jakarta
+// agar selalu akurat tanpa perlu hitung offset manual
 // ============================================================
 function formatTanggalIndonesia(date) {
-  // Konversi ke WIB dengan menambah offset 7 jam
-  const wib = new Date(date.getTime() + 7 * 60 * 60 * 1000);
-  const d = String(wib.getUTCDate()).padStart(2, '0');
-  const m = String(wib.getUTCMonth() + 1).padStart(2, '0');
-  const y = wib.getUTCFullYear();
-  return d + '-' + m + '-' + y;
+  return Utilities.formatDate(date, 'Asia/Jakarta', 'dd-MM-yyyy');
 }
 
 // ============================================================
-// HELPER: FORMAT JAM INDONESIA (HH:mm) — WIB (UTC+7)
+// HELPER: FORMAT JAM INDONESIA (HH:mm) — WIB
 // ============================================================
 function formatJamIndonesia(date) {
-  // Konversi ke WIB dengan menambah offset 7 jam
-  const wib = new Date(date.getTime() + 7 * 60 * 60 * 1000);
-  const h  = String(wib.getUTCHours()).padStart(2, '0');
-  const mn = String(wib.getUTCMinutes()).padStart(2, '0');
-  return h + ':' + mn;
+  return Utilities.formatDate(date, 'Asia/Jakarta', 'HH:mm');
 }
 
 // ============================================================
@@ -313,9 +306,9 @@ function absenMasuk(idBarcode) {
     const now     = new Date();
     const tanggal = formatTanggalIndonesia(now);
     const jam     = formatJamIndonesia(now);
-    // Hitung menit dalam WIB (UTC+7)
-    const wib      = new Date(now.getTime() + 7 * 60 * 60 * 1000);
-    const menitNow = wib.getUTCHours() * 60 + wib.getUTCMinutes();
+    // Hitung menit WIB menggunakan Utilities.formatDate (akurat, tidak perlu offset manual)
+    const jamWIB   = Utilities.formatDate(now, 'Asia/Jakarta', 'HH:mm');
+    const menitNow = parseInt(jamWIB.split(':')[0]) * 60 + parseInt(jamWIB.split(':')[1]);
 
     // Cari data guru
     const guru = cariGuru(idBarcode);
@@ -394,9 +387,9 @@ function absenPulang(idBarcode) {
     const now      = new Date();
     const tanggal  = formatTanggalIndonesia(now);
     const jam      = formatJamIndonesia(now);
-    // Hitung menit dalam WIB (UTC+7)
-    const wib      = new Date(now.getTime() + 7 * 60 * 60 * 1000);
-    const menitNow = wib.getUTCHours() * 60 + wib.getUTCMinutes();
+    // Hitung menit WIB menggunakan Utilities.formatDate (akurat, tidak perlu offset manual)
+    const jamWIB   = Utilities.formatDate(now, 'Asia/Jakarta', 'HH:mm');
+    const menitNow = parseInt(jamWIB.split(':')[0]) * 60 + parseInt(jamWIB.split(':')[1]);
 
     const guru = cariGuru(idBarcode);
     if (!guru) {
