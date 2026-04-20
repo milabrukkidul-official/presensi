@@ -271,7 +271,10 @@ async function loadGuruDropdown(selectId) {
 // ============================================================
 // SCAN BARCODE (halaman scan utama)
 // ============================================================
-var html5QrCode=null, scanMode='masuk', isScanning=false;
+var html5QrCode = null;
+var scanMode    = 'masuk';
+var isScanning  = false;
+var cameraFacing = localStorage.getItem('camera_facing') || 'user'; // 'user'=depan, 'environment'=belakang
 
 function initScanner() {
   if(typeof Html5Qrcode==='undefined'){showToast('Library scanner belum dimuat','error');return;}
@@ -279,19 +282,67 @@ function initScanner() {
   html5QrCode=new Html5Qrcode('reader');
   startScanner();
 }
+
 function startScanner() {
   if(isScanning||!html5QrCode)return;
-  html5QrCode.start({facingMode:'environment'},{fps:10,qrbox:{width:220,height:220}},onScanSuccess,function(){})
-    .then(function(){isScanning=true;})
-    .catch(function(e){showToast('Kamera: '+e,'error');});
+  updateCameraToggleBtn();
+  html5QrCode.start(
+    {facingMode: cameraFacing},
+    {fps:10, qrbox:{width:220,height:220}},
+    onScanSuccess,
+    function(){}
+  ).then(function(){isScanning=true;})
+   .catch(function(e){
+     // Jika kamera yang dipilih tidak tersedia, coba kamera lain
+     if(cameraFacing==='user'){
+       cameraFacing='environment';
+     } else {
+       cameraFacing='user';
+     }
+     localStorage.setItem('camera_facing', cameraFacing);
+     html5QrCode.start(
+       {facingMode: cameraFacing},
+       {fps:10, qrbox:{width:220,height:220}},
+       onScanSuccess,
+       function(){}
+     ).then(function(){isScanning=true; updateCameraToggleBtn();})
+      .catch(function(e2){showToast('Kamera tidak dapat diakses: '+e2,'error');});
+   });
 }
+
 function stopScanner() {
   if(!isScanning||!html5QrCode)return;
   html5QrCode.stop().then(function(){isScanning=false;}).catch(function(){});
 }
+
+// Toggle kamera depan <-> belakang
+function toggleCamera() {
+  if(!html5QrCode)return;
+  const wasScanning = isScanning;
+  const doSwitch = function() {
+    cameraFacing = cameraFacing==='user' ? 'environment' : 'user';
+    localStorage.setItem('camera_facing', cameraFacing);
+    updateCameraToggleBtn();
+    if(wasScanning) startScanner();
+  };
+  if(wasScanning){
+    stopScanner();
+    // Tunggu scanner benar-benar berhenti sebelum restart
+    setTimeout(doSwitch, 400);
+  } else {
+    doSwitch();
+  }
+}
+
+function updateCameraToggleBtn() {
+  const btn = document.getElementById('btn-toggle-camera');
+  if(!btn) return;
+  btn.title = cameraFacing==='user' ? 'Ganti ke kamera belakang' : 'Ganti ke kamera depan';
+  btn.innerHTML = cameraFacing==='user' ? '🔄 Belakang' : '🤳 Depan';
+}
+
 function closeScanPage() {
   stopScanner();
-  // Kembali ke home jika admin, atau ke beranda
   navigateTo('home');
 }
 async function onScanSuccess(decodedText) {
@@ -481,27 +532,52 @@ function renderHasilAbsen(elId,data){
 function initLaporanPage(){
   const now=new Date();
   const todayStr=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
-  const el=document.getElementById('laporan-tgl-harian');
-  if(el&&!el.value) el.value=todayStr;
+
+  // Set default tanggal harian = hari ini
+  const elH=document.getElementById('laporan-tgl-harian');
+  if(elH&&!elH.value) elH.value=todayStr;
+
+  // Set default mingguan = minggu ini
+  const day=now.getDay()||7;
+  const mon=new Date(now); mon.setDate(now.getDate()-day+1);
+  const sun=new Date(mon); sun.setDate(mon.getDate()+6);
+  const fmt=function(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
+  const elDari=document.getElementById('laporan-tgl-dari');
+  const elSmp=document.getElementById('laporan-tgl-sampai');
+  if(elDari&&!elDari.value) elDari.value=fmt(mon);
+  if(elSmp&&!elSmp.value)   elSmp.value=fmt(sun);
+
+  // Set default bulanan = bulan ini
   const bt=document.getElementById('laporan-tahun');
   if(bt&&!bt.value) bt.value=now.getFullYear();
   const bb=document.getElementById('laporan-bulan');
   if(bb&&!bb.value) bb.value=now.getMonth()+1;
+
+  // Pastikan tab aktif dan filter yang benar tampil
+  switchLaporanTab(currentLaporanMode);
+
   // Tombol cetak hanya untuk admin
   const cb=document.getElementById('laporan-cetak-bar');
-  if(cb) cb.style.display=isAdminLoggedIn?'block':'none';
+  if(cb) cb.style.display=(isAdminLoggedIn&&lastLaporanData)?'block':'none';
 }
 
 function switchLaporanTab(mode){
   currentLaporanMode=mode;
+  // Update tab aktif
   document.querySelectorAll('[data-laporan-tab]').forEach(function(t){t.classList.remove('active');});
-  const tab=document.querySelector('[data-laporan-tab="'+mode+'"]'); if(tab)tab.classList.add('active');
+  const tab=document.querySelector('[data-laporan-tab="'+mode+'"]');
+  if(tab) tab.classList.add('active');
+  // Tampilkan filter yang sesuai, sembunyikan yang lain
   ['harian','mingguan','bulanan'].forEach(function(m){
     const el=document.getElementById('laporan-filter-'+m);
-    if(el) el.style.display=m===mode?'block':'none';
+    if(el) el.style.display = (m===mode) ? 'flex' : 'none';
   });
-  document.getElementById('laporan-result-container').innerHTML='';
+  // Reset hasil saat ganti tab
+  const rc=document.getElementById('laporan-result-container');
+  if(rc) rc.innerHTML='';
   lastLaporanData=null;
+  const cb=document.getElementById('laporan-cetak-bar');
+  if(cb) cb.style.display='none';
 }
 
 async function loadLaporan(mode){
@@ -666,13 +742,18 @@ async function loadGuruDropdownStatistik(){
   const sel=document.getElementById('stat-guru-select'); if(!sel)return;
   sel.innerHTML='<option value="">-- Memuat... --</option>'; sel.disabled=true;
   try {
+    // Pakai getDataGuru (semua guru, tidak difilter status absen)
+    // berbeda dengan getDataGuruHadir yang hanya guru yang sudah hadir
     const data=await apiCall('getDataGuru');
     if(!data.success) throw new Error(data.message);
     sel.innerHTML='<option value="">-- Pilih Guru --</option>';
-    data.data.forEach(function(g){sel.innerHTML+='<option value="'+g.idBarcode+'">'+g.nama+'</option>';});
+    data.data.forEach(function(g){
+      sel.innerHTML+='<option value="'+g.idBarcode+'">'+g.nama+'</option>';
+    });
     sel.disabled=false;
   } catch(e){
     sel.innerHTML='<option value="">-- Gagal memuat --</option>';
+    if(e.message!=='__NO_URL__') showToast('Gagal memuat daftar guru: '+e.message,'error');
   }
 }
 
