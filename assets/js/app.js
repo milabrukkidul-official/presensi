@@ -876,6 +876,36 @@ function statSummaryCard(icon,label,val,color){
   '</div>';
 }
 
+// Debug: cek format data presensi di spreadsheet
+async function debugStatistik() {
+  const container = document.getElementById('statistik-result-container');
+  container.innerHTML = loadingHtml('Mengambil data debug...');
+  try {
+    const data = await apiCall('debugPresensi');
+    if (!data.success) throw new Error(data.message);
+    let html = '<div class="laporan-info-bar">Debug: '+data.totalRows+' baris data presensi</div>';
+    html += '<div class="laporan-table-wrap"><table class="laporan-table">';
+    html += '<thead><tr><th>Baris</th><th>Tgl Raw</th><th>Type</th><th>isDate</th><th>Parsed</th><th>ID</th><th>Status</th></tr></thead><tbody>';
+    (data.sample||[]).forEach(function(r){
+      const ok = /^\d{2}-\d{2}-\d{4}$/.test(r.tglParsed);
+      html += '<tr>'+
+        '<td>'+r.row+'</td>'+
+        '<td style="font-size:.72rem;max-width:120px;overflow:hidden">'+r.tglRaw+'</td>'+
+        '<td>'+r.tglType+'</td>'+
+        '<td>'+(r.isDate?'✅':'❌')+'</td>'+
+        '<td style="font-weight:700;color:'+(ok?'#137333':'#c5221f')+'">'+r.tglParsed+'</td>'+
+        '<td>'+r.idBarcode+'</td>'+
+        '<td>'+r.statusMasuk+'</td>'+
+      '</tr>';
+    });
+    html += '</tbody></table></div>';
+    html += '<div style="font-size:.78rem;color:var(--text-muted);padding:8px 0">Kolom "Parsed" harus format DD-MM-YYYY (hijau). Jika merah, ada masalah format tanggal di spreadsheet.</div>';
+    container.innerHTML = html;
+  } catch(e) {
+    container.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><p>'+e.message+'</p></div>';
+  }
+}
+
 // ============================================================
 // LOGIN ADMIN
 // ============================================================
@@ -950,6 +980,10 @@ function updateAdminUI(){
   // Tombol cetak di halaman laporan
   const cb=document.getElementById('laporan-cetak-bar');
   if(cb) cb.style.display=(isAdminLoggedIn&&lastLaporanData)?'block':'none';
+
+  // Tombol debug statistik (hanya admin)
+  const db=document.getElementById('stat-debug-bar');
+  if(db) db.style.display=isAdminLoggedIn?'block':'none';
 }
 function togglePasswordVisibility(inputId){
   const inp=document.getElementById(inputId); if(!inp)return;
