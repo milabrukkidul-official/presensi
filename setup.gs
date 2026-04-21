@@ -576,6 +576,7 @@ function getPresensiHariIni() {
     const namaSekolah    = getSetting('NAMA_SEKOLAH')    || 'Sistem Presensi';
     const namaKepsek     = getSetting('NAMA_KEPSEK')     || '';
     const logoUrl        = getSetting('LOGO_URL')        || '';
+    const tahunAjaran    = getSetting('TAHUN_AJARAN')    || '';
     const jamMasukAwal   = getSetting('JAM_MASUK_AWAL')  || '05:30';
     const jamMasukNormal = getSetting('JAM_MASUK_NORMAL')|| '07:00';
     const jamPulangAwal  = getSetting('JAM_PULANG_AWAL')   || '11:00';
@@ -588,6 +589,7 @@ function getPresensiHariIni() {
       namaSekolah:  namaSekolah,
       namaKepsek:   namaKepsek,
       logoUrl:      logoUrl,
+      tahunAjaran:  tahunAjaran,
       jamMasukAwal:    jamMasukAwal,
       jamMasukNormal:  jamMasukNormal,
       jamPulangAwal:   jamPulangAwal,
