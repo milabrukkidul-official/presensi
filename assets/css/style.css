@@ -247,6 +247,13 @@ body {
   font-weight: 700;
   margin-bottom: 4px;
 }
+.date-banner .tahun-ajaran {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin-top: 8px;
+  opacity: 0.9;
+  letter-spacing: 1px;
+}
 .date-banner .jam {
   font-size: 2.4rem;
   font-weight: 800;
