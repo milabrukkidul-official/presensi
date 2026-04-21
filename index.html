@@ -456,6 +456,24 @@
   <div class="modal-sheet modal-sheet-tall">
     <div class="modal-handle"></div>
     <div class="modal-title" id="cetak-modal-title">&#x1F5A8; Cetak Laporan</div>
+    
+    <!-- Pilihan format cetak (hanya untuk bulanan) -->
+    <div id="cetak-format-section" style="display:none;margin-bottom:16px">
+      <div class="ttd-section-title">&#x1F4C4; Format Cetak</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <button class="cetak-format-btn active" data-format="global" onclick="selectCetakFormat('global')">
+          <span style="font-size:1.5rem;margin-bottom:4px">&#x1F4CA;</span>
+          <span style="font-size:.8rem;font-weight:700">Global</span>
+          <span style="font-size:.7rem;color:var(--text-muted)">Semua guru dalam 1 tabel</span>
+        </button>
+        <button class="cetak-format-btn" data-format="individu" onclick="selectCetakFormat('individu')">
+          <span style="font-size:1.5rem;margin-bottom:4px">&#x1F4C3;</span>
+          <span style="font-size:.8rem;font-weight:700">Per Individu</span>
+          <span style="font-size:.7rem;color:var(--text-muted)">1 guru per halaman</span>
+        </button>
+      </div>
+    </div>
+
     <div class="ttd-section">
       <div class="ttd-section-title">&#x270D;&#xFE0F; Tanda Tangan</div>
       <div class="form-group">
