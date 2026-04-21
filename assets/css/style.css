@@ -927,6 +927,36 @@ select.form-control {
 }
 
 /* ============================================================
+   CETAK FORMAT BUTTON
+   ============================================================ */
+.cetak-format-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 14px 10px;
+  border-radius: var(--radius-sm);
+  border: 2px solid var(--border);
+  background: var(--bg);
+  cursor: pointer;
+  transition: all .2s;
+  font-family: var(--font);
+  gap: 4px;
+}
+.cetak-format-btn:hover {
+  border-color: var(--primary);
+  background: #e8f0fe;
+}
+.cetak-format-btn.active {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: #fff;
+}
+.cetak-format-btn.active span {
+  color: #fff !important;
+}
+
+/* ============================================================
    TOMBOL SILANG SCAN (kembali/batalkan)
    ============================================================ */
 .scan-close-btn {
