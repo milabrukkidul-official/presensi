@@ -756,6 +756,9 @@ function goLaporanPage(p){
   _renderLaporanPage();
 }
 
+// State untuk format cetak
+var cetakFormat = 'global'; // 'global' atau 'individu'
+
 function cetakLaporanDariHalaman(){
   if(!isAdminLoggedIn){requireAdmin(cetakLaporanDariHalaman);return;}
   if(!lastLaporanData){showToast('Tampilkan laporan terlebih dahulu','warning');return;}
@@ -773,11 +776,37 @@ function openCetakModal(){
   const ttd=document.getElementById('cetak-tgl-ttd'); if(ttd&&!ttd.value) ttd.value=todayStr;
   const kepsek=document.getElementById('cetak-nama-kepsek');
   if(kepsek&&!kepsek.value&&cachedSetting.namaKepsek) kepsek.value=cachedSetting.namaKepsek;
+  
+  // Tampilkan pilihan format hanya untuk laporan bulanan
+  const formatSection=document.getElementById('cetak-format-section');
+  if(formatSection) {
+    formatSection.style.display = (lastLaporanData && lastLaporanData.tipe === 'bulanan') ? 'block' : 'none';
+  }
+  
+  // Reset ke format global
+  cetakFormat = 'global';
+  document.querySelectorAll('.cetak-format-btn').forEach(function(btn){
+    btn.classList.remove('active');
+  });
+  const globalBtn = document.querySelector('[data-format="global"]');
+  if(globalBtn) globalBtn.classList.add('active');
+  
   m.classList.add('show');
 }
+
 function closeCetakModal(){
   const m=document.getElementById('modal-cetak'); if(m)m.classList.remove('show');
 }
+
+function selectCetakFormat(format){
+  cetakFormat = format;
+  document.querySelectorAll('.cetak-format-btn').forEach(function(btn){
+    btn.classList.remove('active');
+  });
+  const selectedBtn = document.querySelector('[data-format="'+format+'"]');
+  if(selectedBtn) selectedBtn.classList.add('active');
+}
+
 async function doCetakLaporan(){
   if(!lastLaporanData){showToast('Tidak ada data laporan','warning');return;}
   const btn=document.getElementById('btn-do-cetak');
@@ -787,7 +816,14 @@ async function doCetakLaporan(){
   const tglTtdRaw=document.getElementById('cetak-tgl-ttd').value;
   const tglTtd=tglTtdRaw?WaktuID.inputToID(tglTtdRaw):WaktuID.formatTanggal();
   closeCetakModal();
-  cetakWindow(lastLaporanData,namaKepsek,tempatTtd,tglTtd);
+  
+  // Untuk laporan bulanan, cek format yang dipilih
+  if(lastLaporanData.tipe === 'bulanan' && cetakFormat === 'individu') {
+    cetakBulananPerIndividu(lastLaporanData, namaKepsek, tempatTtd, tglTtd);
+  } else {
+    cetakWindow(lastLaporanData, namaKepsek, tempatTtd, tglTtd);
+  }
+  
   btn.disabled=false; btn.innerHTML='🖨️ Cetak';
 }
 
@@ -798,16 +834,56 @@ function cetakWindow(data,namaKepsek,tempatTtd,tglTtd){
   if(data.tipe==='harian')   judulPeriode='Tanggal: '+data.tanggal;
   if(data.tipe==='mingguan') judulPeriode='Periode: '+data.dari+' s/d '+data.sampai;
   if(data.tipe==='bulanan')  judulPeriode='Bulan: '+WaktuID.namaBulan(parseInt(data.bulan))+' '+data.tahun;
+  
+  // Untuk laporan bulanan format global, kelompokkan per guru dan urutkan abjad
   let rows='';
-  (data.rows||[]).forEach(function(r,i){
-    rows+='<tr><td style="text-align:center">'+(i+1)+'</td><td>'+r.nama+'</td>'+
-      '<td style="text-align:center">'+r.tanggal+'</td>'+
-      '<td style="text-align:center">'+(r.jamMasuk||'-')+'</td>'+
-      '<td style="text-align:center">'+(r.statusMasuk||'-')+'</td>'+
-      '<td style="text-align:center">'+(r.jamPulang||'-')+'</td>'+
-      '<td style="text-align:center">'+(r.statusPulang||'-')+'</td>'+
-      '<td style="text-align:center">'+(r.keterangan||'-')+'</td></tr>';
-  });
+  if(data.tipe==='bulanan'){
+    // Kelompokkan data per guru
+    const guruMap = {};
+    (data.rows||[]).forEach(function(r){
+      if(!guruMap[r.nama]) {
+        guruMap[r.nama] = [];
+      }
+      guruMap[r.nama].push(r);
+    });
+    
+    // Urutkan nama guru secara abjad
+    const namaGuru = Object.keys(guruMap).sort();
+    let no = 1;
+    
+    namaGuru.forEach(function(nama){
+      const dataGuru = guruMap[nama];
+      // Urutkan data per guru berdasarkan tanggal
+      dataGuru.sort(function(a,b){
+        return a.tanggal < b.tanggal ? -1 : 1;
+      });
+      
+      dataGuru.forEach(function(r, idx){
+        rows+='<tr>'+
+          '<td style="text-align:center">'+(no++)+'</td>'+
+          '<td>'+r.nama+'</td>'+
+          '<td style="text-align:center">'+r.tanggal+'</td>'+
+          '<td style="text-align:center">'+(r.jamMasuk||'-')+'</td>'+
+          '<td style="text-align:center">'+(r.statusMasuk||'-')+'</td>'+
+          '<td style="text-align:center">'+(r.jamPulang||'-')+'</td>'+
+          '<td style="text-align:center">'+(r.statusPulang||'-')+'</td>'+
+          '<td style="text-align:center">'+(r.keterangan||'-')+'</td>'+
+        '</tr>';
+      });
+    });
+  } else {
+    // Format normal untuk harian/mingguan
+    (data.rows||[]).forEach(function(r,i){
+      rows+='<tr><td style="text-align:center">'+(i+1)+'</td><td>'+r.nama+'</td>'+
+        '<td style="text-align:center">'+r.tanggal+'</td>'+
+        '<td style="text-align:center">'+(r.jamMasuk||'-')+'</td>'+
+        '<td style="text-align:center">'+(r.statusMasuk||'-')+'</td>'+
+        '<td style="text-align:center">'+(r.jamPulang||'-')+'</td>'+
+        '<td style="text-align:center">'+(r.statusPulang||'-')+'</td>'+
+        '<td style="text-align:center">'+(r.keterangan||'-')+'</td></tr>';
+    });
+  }
+  
   if(!rows) rows='<tr><td colspan="8" style="text-align:center;padding:20px;color:#999">Tidak ada data</td></tr>';
   const logoHtml=logoUrl
     ?'<img src="'+logoUrl+'" style="width:70px;height:70px;border-radius:50%;object-fit:cover;border:2px solid #1a73e8" onerror="this.style.display=\'none\'">'
@@ -831,6 +907,106 @@ function cetakWindow(data,namaKepsek,tempatTtd,tglTtd){
     '<div class="ttd-area"><div class="ttd-box"><p>'+tempatTtd+', '+tglTtd+'</p><p>Kepala Sekolah,</p>'+
     '<div class="ttd-line"></div><p class="nama">'+namaKepsek+'</p></div></div>'+
     '<script>window.onload=function(){window.print();}<\/script></body></html>';
+  const win=window.open('','_blank');
+  if(win){win.document.write(html);win.document.close();}
+  else showToast('Popup diblokir browser. Izinkan popup untuk mencetak.','warning',5000);
+}
+
+// Cetak laporan bulanan per individu (1 guru per halaman)
+function cetakBulananPerIndividu(data, namaKepsek, tempatTtd, tglTtd){
+  const namaSekolah=cachedSetting.namaSekolah||'Sistem Presensi';
+  const logoUrl=cachedSetting.logoUrl||'';
+  const judulPeriode='Bulan: '+WaktuID.namaBulan(parseInt(data.bulan))+' '+data.tahun;
+  
+  // Kelompokkan data per guru
+  const guruMap = {};
+  (data.rows||[]).forEach(function(r){
+    if(!guruMap[r.nama]) {
+      guruMap[r.nama] = [];
+    }
+    guruMap[r.nama].push(r);
+  });
+  
+  // Urutkan nama guru secara abjad
+  const namaGuru = Object.keys(guruMap).sort();
+  
+  const logoHtml=logoUrl
+    ?'<img src="'+logoUrl+'" style="width:70px;height:70px;border-radius:50%;object-fit:cover;border:2px solid #1a73e8" onerror="this.style.display=\'none\'">'
+    :'<div style="width:70px;height:70px;border-radius:50%;background:#e8f0fe;display:flex;align-items:center;justify-content:center;font-size:2rem;border:2px solid #1a73e8">🏫</div>';
+  
+  let allPages = '';
+  
+  namaGuru.forEach(function(nama, guruIdx){
+    const dataGuru = guruMap[nama];
+    // Urutkan data per guru berdasarkan tanggal
+    dataGuru.sort(function(a,b){
+      return a.tanggal < b.tanggal ? -1 : 1;
+    });
+    
+    // Hitung statistik
+    let hadir=0, terlambat=0, ijin=0, sakit=0, alpa=0;
+    dataGuru.forEach(function(r){
+      const s = (r.statusMasuk||'').toUpperCase();
+      if(s==='HADIR') hadir++;
+      else if(s==='TERLAMBAT') terlambat++;
+      else if(s==='IJIN') ijin++;
+      else if(s==='SAKIT') sakit++;
+      else if(s==='ALPA') alpa++;
+    });
+    
+    let rows='';
+    dataGuru.forEach(function(r, idx){
+      rows+='<tr>'+
+        '<td style="text-align:center">'+(idx+1)+'</td>'+
+        '<td style="text-align:center">'+r.tanggal+'</td>'+
+        '<td style="text-align:center">'+(r.jamMasuk||'-')+'</td>'+
+        '<td style="text-align:center">'+(r.statusMasuk||'-')+'</td>'+
+        '<td style="text-align:center">'+(r.jamPulang||'-')+'</td>'+
+        '<td style="text-align:center">'+(r.statusPulang||'-')+'</td>'+
+        '<td style="text-align:center">'+(r.keterangan||'-')+'</td>'+
+      '</tr>';
+    });
+    
+    if(!rows) rows='<tr><td colspan="7" style="text-align:center;padding:20px;color:#999">Tidak ada data</td></tr>';
+    
+    const pageBreak = (guruIdx < namaGuru.length - 1) ? 'page-break-after:always;' : '';
+    
+    allPages += '<div style="'+pageBreak+'">'+
+      '<div class="kop">'+logoHtml+'<div class="kop-info"><h1>'+namaSekolah+'</h1><p>Laporan Presensi Guru</p></div></div>'+
+      '<h2>LAPORAN PRESENSI GURU</h2>'+
+      '<div class="periode">'+judulPeriode+'</div>'+
+      '<div style="background:#e8f0fe;padding:10px;border-radius:8px;margin-bottom:12px;border-left:4px solid #1a73e8">'+
+        '<div style="font-weight:700;font-size:11pt;margin-bottom:4px">'+nama+'</div>'+
+        '<div style="font-size:8.5pt;color:#5f6368">'+
+          'Hadir: <strong style="color:#137333">'+hadir+'</strong> | '+
+          'Terlambat: <strong style="color:#b06000">'+terlambat+'</strong> | '+
+          'Ijin: <strong style="color:#1a73e8">'+ijin+'</strong> | '+
+          'Sakit: <strong style="color:#c5221f">'+sakit+'</strong> | '+
+          'Alpa: <strong style="color:#5f6368">'+alpa+'</strong>'+
+        '</div>'+
+      '</div>'+
+      '<table><thead><tr><th style="width:30px">No</th><th style="width:90px">Tanggal</th>'+
+      '<th style="width:70px">Jam Masuk</th><th style="width:80px">Status Masuk</th>'+
+      '<th style="width:70px">Jam Pulang</th><th style="width:80px">Status Pulang</th><th style="width:70px">Ket.</th></tr></thead>'+
+      '<tbody>'+rows+'</tbody></table>'+
+      '<div class="ttd-area"><div class="ttd-box"><p>'+tempatTtd+', '+tglTtd+'</p><p>Kepala Sekolah,</p>'+
+      '<div class="ttd-line"></div><p class="nama">'+namaKepsek+'</p></div></div>'+
+    '</div>';
+  });
+  
+  const html='<!DOCTYPE html><html lang="id"><head><meta charset="UTF-8"><title>Laporan Presensi Per Individu</title>'+
+    '<style>body{font-family:"Segoe UI",Arial,sans-serif;font-size:11pt;color:#202124;margin:0;padding:20px}'+
+    '.kop{display:flex;align-items:center;gap:16px;border-bottom:3px solid #1a73e8;padding-bottom:12px;margin-bottom:16px}'+
+    '.kop-info h1{font-size:14pt;margin:0 0 2px;color:#1a73e8}.kop-info p{margin:0;font-size:9pt;color:#5f6368}'+
+    'h2{font-size:12pt;text-align:center;margin:0 0 4px}.periode{text-align:center;font-size:9pt;color:#5f6368;margin-bottom:12px}'+
+    'table{width:100%;border-collapse:collapse;font-size:9.5pt}th{background:#1a73e8;color:#fff;padding:7px 6px;text-align:center;font-weight:600}'+
+    'td{padding:6px;border:1px solid #dadce0}tr:nth-child(even) td{background:#f8f9fa}'+
+    '.ttd-area{display:flex;justify-content:flex-end;margin-top:32px}.ttd-box{text-align:center;min-width:200px}'+
+    '.ttd-box .ttd-line{border-bottom:1px solid #202124;margin:48px 0 4px;width:180px}.ttd-box p{margin:0;font-size:9.5pt}'+
+    '.ttd-box .nama{font-weight:700;text-decoration:underline}@media print{body{padding:10px}}</style></head><body>'+
+    allPages+
+    '<script>window.onload=function(){window.print();}<\/script></body></html>';
+  
   const win=window.open('','_blank');
   if(win){win.document.write(html);win.document.close();}
   else showToast('Popup diblokir browser. Izinkan popup untuk mencetak.','warning',5000);
