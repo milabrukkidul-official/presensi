@@ -149,8 +149,6 @@ function startClock() {
     ['manual-jam','pulang-jam'].forEach(function(id){
       const e=document.getElementById(id); if(e) e.textContent=WaktuID.formatJam(now);
     });
-    const cb=document.getElementById('clock-tanggal-banner');
-    if(cb) cb.textContent=WaktuID.formatTanggal(now);
   }
   tick(); setInterval(tick,1000);
 }
@@ -212,7 +210,15 @@ async function loadPresensiHariIni() {
     cachedSetting.namaSekolah=data.namaSekolah;
     cachedSetting.logoUrl=data.logoUrl;
     cachedSetting.namaKepsek=data.namaKepsek||'';
+    cachedSetting.tahunAjaran=data.tahunAjaran||'';
     updateHeaderInfo(data.namaSekolah,data.logoUrl);
+    
+    // Update tahun ajaran di banner
+    const elTahunAjaran=document.getElementById('clock-tahun-ajaran');
+    if(elTahunAjaran&&data.tahunAjaran) {
+      elTahunAjaran.textContent='TAHUN PELAJARAN '+data.tahunAjaran;
+    }
+    
     const elK=document.getElementById('cetak-nama-kepsek');
     if(elK&&!elK.value&&data.namaKepsek) elK.value=data.namaKepsek;
 
