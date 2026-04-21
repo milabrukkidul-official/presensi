@@ -35,6 +35,9 @@
     <div id="header-title" class="header-title">Sistem Presensi</div>
     <div id="clock-tanggal" class="header-sub">--/--/----</div>
   </div>
+  <button class="header-btn" id="btn-fullscreen" onclick="toggleFullscreen()" title="Fullscreen">
+    <span id="fullscreen-icon">&#x26F6;</span>
+  </button>
   <button class="header-btn" id="btn-admin-header" onclick="handleAdminHeaderClick()" title="Admin">
     <span id="admin-header-icon">&#x1F512;</span>
   </button>
@@ -374,10 +377,6 @@
         <input type="password" id="input-admin-password" class="form-control"
                placeholder="Masukkan password..."
                onkeydown="if(event.key==='Enter')submitLogin()">
-        <button onclick="togglePasswordVisibility('input-admin-password')"
-                style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:1.1rem;color:var(--text-muted)">
-          &#x1F441;
-        </button>
       </div>
     </div>
     <div id="login-error" style="display:none;background:#fce8e6;color:#c5221f;padding:10px 14px;border-radius:var(--radius-sm);font-size:.82rem;margin-bottom:12px">
