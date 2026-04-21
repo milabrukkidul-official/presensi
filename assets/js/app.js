@@ -23,6 +23,44 @@ let currentStatTab   = 'global';     // global | individu
 let lastLaporanData  = null;         // untuk cetak ulang
 
 // ============================================================
+// FULLSCREEN
+// ============================================================
+function toggleFullscreen() {
+  if (!document.fullscreenElement && !document.webkitFullscreenElement && !document.mozFullScreenElement) {
+    // Masuk fullscreen
+    var elem = document.documentElement;
+    if (elem.requestFullscreen) {
+      elem.requestFullscreen();
+    } else if (elem.webkitRequestFullscreen) { // Safari
+      elem.webkitRequestFullscreen();
+    } else if (elem.mozRequestFullScreen) { // Firefox
+      elem.mozRequestFullScreen();
+    } else if (elem.msRequestFullscreen) { // IE/Edge
+      elem.msRequestFullscreen();
+    }
+  } else {
+    // Keluar fullscreen
+    if (document.exitFullscreen) {
+      document.exitFullscreen();
+    } else if (document.webkitExitFullscreen) { // Safari
+      document.webkitExitFullscreen();
+    } else if (document.mozCancelFullScreen) { // Firefox
+      document.mozCancelFullScreen();
+    } else if (document.msExitFullscreen) { // IE/Edge
+      document.msExitFullscreen();
+    }
+  }
+}
+
+// Update ikon fullscreen saat status berubah
+function updateFullscreenIcon() {
+  var icon = document.getElementById('fullscreen-icon');
+  if (!icon) return;
+  var isFullscreen = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement;
+  icon.innerHTML = isFullscreen ? '&#x26CB;' : '&#x26F6;'; // ⛋ (exit) atau ⛶ (enter)
+}
+
+// ============================================================
 // WAKTU INDONESIA
 // ============================================================
 const WaktuID = {
@@ -613,24 +651,47 @@ async function loadLaporan(mode){
   }
 }
 
-function renderLaporanTable(data,container){
+// State pagination laporan
+var _laporanPage = 1;
+var _laporanPerPage = 20;
+var _laporanData = null;
+var _laporanContainer = null;
+
+function renderLaporanTable(data, container){
   if(!data.rows||!data.rows.length){
     container.innerHTML='<div class="empty-state"><div class="empty-icon">📋</div><p>Tidak ada data pada periode ini.</p></div>';
     return;
   }
-  let judulPeriode='';
+  _laporanPage = 1;
+  _laporanData = data;
+  _laporanContainer = container;
+  _renderLaporanPage();
+}
+
+function _renderLaporanPage(){
+  var data = _laporanData;
+  var container = _laporanContainer;
+  if(!data||!container) return;
+
+  var judulPeriode='';
   if(data.tipe==='harian')   judulPeriode='Tanggal: '+data.tanggal;
   if(data.tipe==='mingguan') judulPeriode='Periode: '+data.dari+' s/d '+data.sampai;
   if(data.tipe==='bulanan')  judulPeriode='Bulan: '+WaktuID.namaBulan(parseInt(data.bulan))+' '+data.tahun;
 
-  const statusColor={'HADIR':'#137333','TERLAMBAT':'#b06000','IJIN':'#1a73e8','SAKIT':'#c5221f','ALPA':'#5f6368','PULANG':'#137333','MENDAHULUI':'#b03228'};
+  var statusColor={'HADIR':'#137333','TERLAMBAT':'#b06000','IJIN':'#1a73e8','SAKIT':'#c5221f','ALPA':'#5f6368','PULANG':'#137333','MENDAHULUI':'#b03228'};
 
-  let rows='';
-  data.rows.forEach(function(r,i){
-    const sc=statusColor[r.statusMasuk]||'#5f6368';
-    const spc=statusColor[r.statusPulang]||'#5f6368';
+  var total = data.rows.length;
+  var totalPages = Math.ceil(total / _laporanPerPage);
+  var startIdx = (_laporanPage - 1) * _laporanPerPage;
+  var endIdx   = Math.min(startIdx + _laporanPerPage, total);
+  var pageRows = data.rows.slice(startIdx, endIdx);
+
+  var rows='';
+  pageRows.forEach(function(r,i){
+    var sc=statusColor[r.statusMasuk]||'#5f6368';
+    var spc=statusColor[r.statusPulang]||'#5f6368';
     rows+='<tr>'+
-      '<td style="text-align:center;color:var(--text-muted);font-size:.75rem">'+(i+1)+'</td>'+
+      '<td style="text-align:center;color:var(--text-muted);font-size:.75rem">'+(startIdx+i+1)+'</td>'+
       '<td><div style="font-weight:600;font-size:.85rem">'+r.nama+'</div><div style="font-size:.72rem;color:var(--text-muted)">'+r.tanggal+'</div></td>'+
       '<td style="text-align:center"><span style="font-size:.78rem;font-weight:700;color:'+sc+'">'+r.statusMasuk+'</span><div style="font-size:.72rem;color:var(--text-muted)">'+(r.jamMasuk!=='-'?r.jamMasuk:'')+'</div></td>'+
       '<td style="text-align:center"><span style="font-size:.78rem;font-weight:700;color:'+spc+'">'+r.statusPulang+'</span><div style="font-size:.72rem;color:var(--text-muted)">'+(r.jamPulang!=='-'?r.jamPulang:'')+'</div></td>'+
@@ -638,13 +699,55 @@ function renderLaporanTable(data,container){
     '</tr>';
   });
 
+  // Kontrol per-halaman
+  var perPageOptions=[20,50,100];
+  var perPageHtml='<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">'+
+    '<span style="font-size:.78rem;color:var(--text-muted)">Tampilkan:</span>';
+  perPageOptions.forEach(function(n){
+    var active=n===_laporanPerPage;
+    perPageHtml+='<button onclick="setLaporanPerPage('+n+')" style="padding:4px 10px;border-radius:99px;border:1.5px solid '+(active?'var(--primary)':'var(--border)')+';background:'+(active?'var(--primary)':'transparent')+';color:'+(active?'#fff':'var(--text-muted)')+';font-size:.78rem;font-weight:700;cursor:pointer">'+n+'</button>';
+  });
+  perPageHtml+='</div>';
+
+  // Kontrol navigasi halaman
+  var navHtml='';
+  if(totalPages>1){
+    navHtml='<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">'+
+      '<button onclick="goLaporanPage(1)" '+((_laporanPage===1)?'disabled':'')+' style="padding:4px 10px;border-radius:99px;border:1.5px solid var(--border);background:transparent;font-size:.78rem;font-weight:700;cursor:pointer;color:var(--text-muted)" title="Halaman pertama">&#x23EE;</button>'+
+      '<button onclick="goLaporanPage('+(_laporanPage-1)+')" '+((_laporanPage===1)?'disabled':'')+' style="padding:4px 10px;border-radius:99px;border:1.5px solid var(--border);background:transparent;font-size:.78rem;font-weight:700;cursor:pointer;color:var(--text-muted)" title="Sebelumnya">&#x276E;</button>'+
+      '<span style="font-size:.78rem;color:var(--text-muted);padding:0 4px">'+_laporanPage+' / '+totalPages+'</span>'+
+      '<button onclick="goLaporanPage('+(_laporanPage+1)+')" '+((_laporanPage===totalPages)?'disabled':'')+' style="padding:4px 10px;border-radius:99px;border:1.5px solid var(--border);background:transparent;font-size:.78rem;font-weight:700;cursor:pointer;color:var(--text-muted)" title="Berikutnya">&#x276F;</button>'+
+      '<button onclick="goLaporanPage('+totalPages+')" '+((_laporanPage===totalPages)?'disabled':'')+' style="padding:4px 10px;border-radius:99px;border:1.5px solid var(--border);background:transparent;font-size:.78rem;font-weight:700;cursor:pointer;color:var(--text-muted)" title="Halaman terakhir">&#x23ED;</button>'+
+    '</div>';
+  }
+
   container.innerHTML=
-    '<div class="laporan-info-bar">'+judulPeriode+' &bull; '+data.rows.length+' data</div>'+
+    '<div class="laporan-info-bar">'+judulPeriode+' &bull; '+total+' data</div>'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px">'+
+      perPageHtml+navHtml+
+    '</div>'+
     '<div class="laporan-table-wrap">'+
     '<table class="laporan-table">'+
       '<thead><tr><th>#</th><th>Nama / Tanggal</th><th>Masuk</th><th>Pulang</th><th>Ket.</th></tr></thead>'+
       '<tbody>'+rows+'</tbody>'+
-    '</table></div>';
+    '</table></div>'+
+    (totalPages>1?
+      '<div style="display:flex;justify-content:flex-end;margin-top:8px">'+navHtml+'</div>':
+    '');
+}
+
+function setLaporanPerPage(n){
+  _laporanPerPage=n;
+  _laporanPage=1;
+  _renderLaporanPage();
+}
+
+function goLaporanPage(p){
+  if(!_laporanData) return;
+  var totalPages=Math.ceil(_laporanData.rows.length/_laporanPerPage);
+  if(p<1||p>totalPages) return;
+  _laporanPage=p;
+  _renderLaporanPage();
 }
 
 function cetakLaporanDariHalaman(){
@@ -1030,6 +1133,12 @@ document.addEventListener('DOMContentLoaded',function(){
   startClock();
   updateAdminUI();   // restore tampilan nav sesuai status session
   navigateTo('home');
+
+  // Event listener untuk perubahan fullscreen
+  document.addEventListener('fullscreenchange', updateFullscreenIcon);
+  document.addEventListener('webkitfullscreenchange', updateFullscreenIcon);
+  document.addEventListener('mozfullscreenchange', updateFullscreenIcon);
+  document.addEventListener('MSFullscreenChange', updateFullscreenIcon);
 
   // Nav tamu
   document.querySelectorAll('#nav-tamu [data-nav]').forEach(function(el){
