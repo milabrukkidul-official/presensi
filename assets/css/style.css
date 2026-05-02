@@ -360,11 +360,11 @@ body {
   white-space: nowrap;
   flex-shrink: 0;
 }
-.badge-hadir    { background: #e6f4ea; color: #137333; }
+.badge-hadir    { background: #f1f3f4; color: #202124; }
 .badge-terlambat{ background: #fef7e0; color: #b06000; }
 .badge-ijin     { background: #e8f0fe; color: #1a73e8; }
-.badge-sakit    { background: #fce8e6; color: #c5221f; }
-.badge-alpa     { background: #f1f3f4; color: #5f6368; }
+.badge-sakit    { background: #e6f4ea; color: #137333; }
+.badge-alpa     { background: #fce8e6; color: #c5221f; }
 .badge-pulang      { background: #e6f4ea; color: #137333; }
 .badge-mendahului  { background: #fce8e6; color: #b03228; }
 .badge-belum       { background: #f1f3f4; color: #9aa0a6; }
