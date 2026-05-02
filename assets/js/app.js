@@ -684,7 +684,7 @@ function _renderLaporanPage(){
   if(data.tipe==='mingguan') judulPeriode='Periode: '+data.dari+' s/d '+data.sampai;
   if(data.tipe==='bulanan')  judulPeriode='Bulan: '+WaktuID.namaBulan(parseInt(data.bulan))+' '+data.tahun;
 
-  var statusColor={'HADIR':'#137333','TERLAMBAT':'#b06000','IJIN':'#1a73e8','SAKIT':'#c5221f','ALPA':'#5f6368','PULANG':'#137333','MENDAHULUI':'#b03228'};
+  var statusColor={'HADIR':'#202124','TERLAMBAT':'#b06000','IJIN':'#1a73e8','SAKIT':'#137333','ALPA':'#c5221f','PULANG':'#137333','MENDAHULUI':'#b03228'};
 
   var total = data.rows.length;
   var totalPages = Math.ceil(total / _laporanPerPage);
@@ -978,11 +978,11 @@ function cetakBulananPerIndividu(data, namaKepsek, tempatTtd, tglTtd){
       '<div style="background:#e8f0fe;padding:10px;border-radius:8px;margin-bottom:12px;border-left:4px solid #1a73e8">'+
         '<div style="font-weight:700;font-size:11pt;margin-bottom:4px">'+nama+'</div>'+
         '<div style="font-size:8.5pt;color:#5f6368">'+
-          'Hadir: <strong style="color:#137333">'+hadir+'</strong> | '+
+          'Hadir: <strong style="color:#202124">'+hadir+'</strong> | '+
           'Terlambat: <strong style="color:#b06000">'+terlambat+'</strong> | '+
           'Ijin: <strong style="color:#1a73e8">'+ijin+'</strong> | '+
-          'Sakit: <strong style="color:#c5221f">'+sakit+'</strong> | '+
-          'Alpa: <strong style="color:#5f6368">'+alpa+'</strong>'+
+          'Sakit: <strong style="color:#137333">'+sakit+'</strong> | '+
+          'Alpa: <strong style="color:#c5221f">'+alpa+'</strong>'+
         '</div>'+
       '</div>'+
       '<table><thead><tr><th style="width:30px">No</th><th style="width:90px">Tanggal</th>'+
@@ -1095,11 +1095,11 @@ function renderStatistikGlobal(data,container,bl,th){
       html+='<tr>'+
         '<td style="text-align:center;color:var(--text-muted);font-size:.75rem">'+(i+1)+'</td>'+
         '<td style="font-weight:600;font-size:.85rem">'+g.nama+'</td>'+
-        '<td style="text-align:center;color:#137333;font-weight:700">'+g.hadir+'</td>'+
+        '<td style="text-align:center;color:#202124;font-weight:700">'+g.hadir+'</td>'+
         '<td style="text-align:center;color:#b06000;font-weight:700">'+g.terlambat+'</td>'+
         '<td style="text-align:center;color:#1a73e8;font-weight:700">'+g.ijin+'</td>'+
-        '<td style="text-align:center;color:#c5221f;font-weight:700">'+g.sakit+'</td>'+
-        '<td style="text-align:center;color:#5f6368;font-weight:700">'+g.alpa+'</td>'+
+        '<td style="text-align:center;color:#137333;font-weight:700">'+g.sakit+'</td>'+
+        '<td style="text-align:center;color:#c5221f;font-weight:700">'+g.alpa+'</td>'+
       '</tr>';
     });
     html+='</tbody></table></div>';
@@ -1124,11 +1124,11 @@ function renderStatistikIndividu(data,container,bl,th){
 
   // Ringkasan
   html+='<div class="stat-summary-grid">';
-  html+=statSummaryCard('✅','Hadir',data.hadir||0,'var(--success)');
+  html+=statSummaryCard('✅','Hadir',data.hadir||0,'#202124');
   html+=statSummaryCard('⏰','Terlambat',data.terlambat||0,'var(--warning)');
   html+=statSummaryCard('📋','Ijin',data.ijin||0,'var(--info)');
-  html+=statSummaryCard('🤒','Sakit',data.sakit||0,'var(--danger)');
-  html+=statSummaryCard('❌','Alpa',data.alpa||0,'var(--text-muted)');
+  html+=statSummaryCard('🤒','Sakit',data.sakit||0,'#137333');
+  html+=statSummaryCard('❌','Alpa',data.alpa||0,'#c5221f');
   html+=statSummaryCard('🏠','Mendahului',data.mendahului||0,'#b03228');
   html+='</div>';
 
@@ -1137,7 +1137,7 @@ function renderStatistikIndividu(data,container,bl,th){
     html+='<div class="section-title" style="padding:12px 0 8px">Detail Harian</div>';
     html+='<div class="laporan-table-wrap"><table class="laporan-table">';
     html+='<thead><tr><th>Tanggal</th><th>Masuk</th><th>Pulang</th><th>Ket.</th></tr></thead><tbody>';
-    const sc={'HADIR':'#137333','TERLAMBAT':'#b06000','IJIN':'#1a73e8','SAKIT':'#c5221f','ALPA':'#5f6368','PULANG':'#137333','MENDAHULUI':'#b03228'};
+    const sc={'HADIR':'#202124','TERLAMBAT':'#b06000','IJIN':'#1a73e8','SAKIT':'#137333','ALPA':'#c5221f','PULANG':'#137333','MENDAHULUI':'#b03228'};
     data.detail.forEach(function(r){
       html+='<tr>'+
         '<td style="font-size:.8rem">'+r.tanggal+'</td>'+
