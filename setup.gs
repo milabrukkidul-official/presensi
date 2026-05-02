@@ -28,9 +28,9 @@ function setupSpreadsheet() {
   if (!sheetGuru) sheetGuru = ss.insertSheet(SHEET_GURU);
   sheetGuru.clearContents();
 
-  const headerGuru = [['NO', 'NAMA', 'ID BARCODE', 'URL FOTO']];
-  sheetGuru.getRange(1, 1, 1, 4).setValues(headerGuru);
-  sheetGuru.getRange(1, 1, 1, 4)
+  const headerGuru = [['NO', 'NAMA', 'ID BARCODE', 'KATEGORI', 'URL FOTO']];
+  sheetGuru.getRange(1, 1, 1, 5).setValues(headerGuru);
+  sheetGuru.getRange(1, 1, 1, 5)
     .setBackground('#1a73e8')
     .setFontColor('#ffffff')
     .setFontWeight('bold')
@@ -38,17 +38,18 @@ function setupSpreadsheet() {
   sheetGuru.setColumnWidth(1, 60);
   sheetGuru.setColumnWidth(2, 200);
   sheetGuru.setColumnWidth(3, 150);
-  sheetGuru.setColumnWidth(4, 300);
+  sheetGuru.setColumnWidth(4, 120);
+  sheetGuru.setColumnWidth(5, 300);
 
-  // Contoh data guru
+  // Contoh data guru dengan kategori SERGU dan NON SERGU
   const contohGuru = [
-    [1, 'Ahmad Fauzi, S.Pd',    'GURU001', 'https://i.pravatar.cc/150?img=1'],
-    [2, 'Siti Rahayu, M.Pd',    'GURU002', 'https://i.pravatar.cc/150?img=5'],
-    [3, 'Budi Santoso, S.Pd',   'GURU003', 'https://i.pravatar.cc/150?img=3'],
-    [4, 'Dewi Lestari, S.Pd',   'GURU004', 'https://i.pravatar.cc/150?img=9'],
-    [5, 'Eko Prasetyo, M.Pd',   'GURU005', 'https://i.pravatar.cc/150?img=7'],
+    [1, 'Ahmad Fauzi, S.Pd',    'GURU001', 'SERGU',     'https://i.pravatar.cc/150?img=1'],
+    [2, 'Siti Rahayu, M.Pd',    'GURU002', 'NON SERGU', 'https://i.pravatar.cc/150?img=5'],
+    [3, 'Budi Santoso, S.Pd',   'GURU003', 'SERGU',     'https://i.pravatar.cc/150?img=3'],
+    [4, 'Dewi Lestari, S.Pd',   'GURU004', 'NON SERGU', 'https://i.pravatar.cc/150?img=9'],
+    [5, 'Eko Prasetyo, M.Pd',   'GURU005', 'SERGU',     'https://i.pravatar.cc/150?img=7'],
   ];
-  sheetGuru.getRange(2, 1, contohGuru.length, 4).setValues(contohGuru);
+  sheetGuru.getRange(2, 1, contohGuru.length, 5).setValues(contohGuru);
 
   // --- Sheet PRESENSI ---
   let sheetPresensi = ss.getSheetByName(SHEET_PRESENSI);
@@ -88,7 +89,8 @@ function setupSpreadsheet() {
     ['JAM_MASUK_AWAL',             '05:30',                          'Jam paling awal boleh absen masuk (HH:mm)'],
     ['JAM_MASUK_NORMAL',           '07:00',                          'Batas jam masuk normal/tidak terlambat (HH:mm)'],
     ['JAM_PULANG_AWAL',            '09:00',                          'Jam paling awal boleh absen pulang — tercatat MENDAHULUI (HH:mm)'],
-    ['JAM_PULANG_NORMAL',          '13:00',                          'Batas jam pulang normal (Senin-Kamis) — di bawah ini tercatat MENDAHULUI (HH:mm)'],
+    ['JAM_PULANG_NORMAL_NON_SERGU','13:00',                          'Batas jam pulang normal NON SERGU (Senin-Kamis) — di bawah ini tercatat MENDAHULUI (HH:mm)'],
+    ['JAM_PULANG_NORMAL_SERGU',    '13:30',                          'Batas jam pulang normal SERGU (Senin-Kamis) — di bawah ini tercatat MENDAHULUI (HH:mm)'],
     ['JAM_PULANG_NORMAL_JUMAT',    '10:00',                          'Batas jam pulang normal hari Jumat (HH:mm)'],
     ['JAM_PULANG_NORMAL_SABTU',    '11:00',                          'Batas jam pulang normal hari Sabtu (HH:mm)'],
     ['JAM_PULANG_AKHIR',           '17:00',                          'Batas maksimal absen pulang (HH:mm)'],
@@ -122,7 +124,9 @@ function setupSpreadsheet() {
     'Pengaturan jam di sheet SETTING:\n' +
     '• JAM_MASUK_AWAL   = 05:30 (mulai bisa absen masuk)\n' +
     '• JAM_MASUK_NORMAL = 07:00 (batas tidak terlambat)\n' +
-    '• JAM_PULANG_AWAL  = 13:00 (mulai bisa absen pulang)\n' +
+    '• JAM_PULANG_AWAL  = 09:00 (mulai bisa absen pulang)\n' +
+    '• JAM_PULANG_NORMAL_NON_SERGU = 13:00 (Senin-Kamis)\n' +
+    '• JAM_PULANG_NORMAL_SERGU = 13:30 (Senin-Kamis)\n' +
     '• JAM_PULANG_AKHIR = 17:00 (batas maksimal pulang)\n\n' +
     'Langkah selanjutnya:\n' +
     '1. Isi data guru di sheet DATA_GURU\n' +
@@ -240,7 +244,8 @@ function cariGuru(idBarcode) {
         no:       data[i][0],
         nama:     data[i][1],
         idBarcode: data[i][2],
-        urlFoto:  data[i][3]
+        kategori: String(data[i][3] || 'NON SERGU').trim().toUpperCase(),
+        urlFoto:  data[i][4]
       };
     }
   }
@@ -364,9 +369,12 @@ function absenMasuk(idBarcode) {
 // ============================================================
 // ABSEN PULANG (SCAN BARCODE)
 // Aturan:
-//   < 11:00        → ditolak (terlalu awal)
-//   11:00 - 12:59  → MENDAHULUI (boleh pulang, tercatat mendahului)
-//   13:00 - 17:00  → PULANG (normal)
+//   < 09:00        → ditolak (terlalu awal)
+//   Senin-Kamis:
+//     - NON SERGU: < 13:00 → MENDAHULUI, >= 13:00 → PULANG
+//     - SERGU:     < 13:30 → MENDAHULUI, >= 13:30 → PULANG
+//   Jumat: < 10:00 → MENDAHULUI, >= 10:00 → PULANG
+//   Sabtu: < 11:00 → MENDAHULUI, >= 11:00 → PULANG
 //   > 17:00        → ditolak (sudah lewat batas)
 // ============================================================
 function absenPulang(idBarcode) {
@@ -384,7 +392,6 @@ function absenPulang(idBarcode) {
     }
 
     // Ambil batas jam pulang dari setting
-    // JAM_PULANG_NORMAL berbeda tergantung hari
     const tz      = SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone();
     const hariStr = Utilities.formatDate(now, tz, 'u'); // 1=Senin ... 7=Minggu (ISO)
     const hariNum = parseInt(hariStr); // 5=Jumat, 6=Sabtu
@@ -401,7 +408,13 @@ function absenPulang(idBarcode) {
       jamPulangNormal = getSetting('JAM_PULANG_NORMAL_SABTU') || '11:00';
     } else {
       // Senin–Kamis (dan Minggu jika masuk)
-      jamPulangNormal = getSetting('JAM_PULANG_NORMAL') || '13:00';
+      // Cek kategori guru: SERGU atau NON SERGU
+      const kategori = guru.kategori || 'NON SERGU';
+      if (kategori === 'SERGU') {
+        jamPulangNormal = getSetting('JAM_PULANG_NORMAL_SERGU') || '13:30';
+      } else {
+        jamPulangNormal = getSetting('JAM_PULANG_NORMAL_NON_SERGU') || '13:00';
+      }
     }
 
     const menitAwal   = jamKeMenit(jamPulangAwal);
@@ -567,7 +580,8 @@ function getPresensiHariIni() {
         no:       dataGuru[i][0],
         nama:     dataGuru[i][1],
         idBarcode: id,
-        urlFoto:  dataGuru[i][3],
+        kategori: String(dataGuru[i][3] || 'NON SERGU').trim().toUpperCase(),
+        urlFoto:  dataGuru[i][4],
         presensi: pres
       });
     }
@@ -579,7 +593,7 @@ function getPresensiHariIni() {
     const tahunAjaran    = getSetting('TAHUN_AJARAN')    || '';
     const jamMasukAwal   = getSetting('JAM_MASUK_AWAL')  || '05:30';
     const jamMasukNormal = getSetting('JAM_MASUK_NORMAL')|| '07:00';
-    const jamPulangAwal  = getSetting('JAM_PULANG_AWAL')   || '11:00';
+    const jamPulangAwal  = getSetting('JAM_PULANG_AWAL')   || '09:00';
     const jamPulangAkhir = getSetting('JAM_PULANG_AKHIR')  || '17:00';
 
     return {
@@ -909,7 +923,8 @@ function getSemuaGuru() {
         no:        data[i][0],
         nama:      data[i][1],
         idBarcode: String(data[i][2]).trim(),
-        urlFoto:   data[i][3]
+        kategori:  String(data[i][3] || 'NON SERGU').trim().toUpperCase(),
+        urlFoto:   data[i][4]
       });
     }
     return { success: true, data: result };
@@ -958,7 +973,8 @@ function getDataGuru() {
         no:        dataGuru[i][0],
         nama:      dataGuru[i][1],
         idBarcode: id,
-        urlFoto:   dataGuru[i][3]
+        kategori:  String(dataGuru[i][3] || 'NON SERGU').trim().toUpperCase(),
+        urlFoto:   dataGuru[i][4]
       });
     }
 
@@ -1019,7 +1035,8 @@ function getDataGuruHadir() {
         no:        dataGuru[i][0],
         nama:      dataGuru[i][1],
         idBarcode: id,
-        urlFoto:   dataGuru[i][3]
+        kategori:  String(dataGuru[i][3] || 'NON SERGU').trim().toUpperCase(),
+        urlFoto:   dataGuru[i][4]
       });
     }
 
