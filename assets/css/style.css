@@ -1098,3 +1098,164 @@ select.form-control {
   align-items: center;
   gap: 3px;
 }
+
+/* ============================================================
+   HARI LIBUR
+   ============================================================ */
+
+/* Daftar libur */
+.libur-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0 0 16px;
+}
+
+.libur-item {
+  background: var(--card);
+  border-radius: var(--radius-sm);
+  border-left: 4px solid var(--danger);
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  box-shadow: 0 1px 6px rgba(0,0,0,.08);
+}
+
+.libur-item-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.libur-tanggal {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+  flex-wrap: wrap;
+}
+
+.libur-badge-hari {
+  background: #fce8e6;
+  color: var(--danger);
+  font-size: .7rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+
+.libur-tgl-text {
+  font-size: .82rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.libur-keterangan {
+  font-size: .78rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.btn-hapus-libur {
+  background: #fce8e6;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 1rem;
+  cursor: pointer;
+  color: var(--danger);
+  flex-shrink: 0;
+  transition: background .2s;
+}
+.btn-hapus-libur:hover { background: #f5c6c3; }
+
+/* Tombol edit */
+.btn-edit-libur {
+  background: #e8f0fe;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 1rem;
+  cursor: pointer;
+  color: var(--primary);
+  flex-shrink: 0;
+  transition: background .2s;
+}
+.btn-edit-libur:hover { background: #d2e3fc; }
+
+/* Wrapper tombol aksi (edit + hapus) */
+.libur-item-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+  align-items: center;
+}
+
+/* ============================================================
+   BADGE / BANNER HARI LIBUR
+   ============================================================ */
+
+/* Banner di date-banner halaman home */
+.libur-banner {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 10px;
+  background: rgba(219, 68, 55, 0.18);
+  border: 1.5px solid rgba(219, 68, 55, 0.55);
+  border-radius: 30px;
+  padding: 7px 18px;
+  font-size: .82rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: .02em;
+  animation: liburPulse 2s ease-in-out infinite;
+}
+
+.libur-banner-icon {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+@keyframes liburPulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: .7; }
+}
+
+/* Banner di halaman scan (di dalam scan-container) */
+.scan-libur-banner {
+  display: none;
+  align-items: center;
+  gap: 10px;
+  background: #fce8e6;
+  border-left: 4px solid var(--danger);
+  color: #c5221f;
+  font-size: .82rem;
+  font-weight: 700;
+  padding: 12px 16px;
+  margin: 0;
+}
+
+.scan-libur-banner span:first-child { font-size: 1.2rem; flex-shrink: 0; }
+
+/* Banner di form manual & pulang */
+.form-libur-banner {
+  display: none;
+  align-items: center;
+  gap: 10px;
+  background: #fce8e6;
+  border: 1.5px solid #f5c6c3;
+  border-radius: var(--radius-sm);
+  color: #c5221f;
+  font-size: .82rem;
+  font-weight: 700;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+}
+
+.form-libur-banner span:first-child { font-size: 1.2rem; flex-shrink: 0; }

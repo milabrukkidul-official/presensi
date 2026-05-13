@@ -21,6 +21,7 @@ let cachedSetting    = {};
 let currentLaporanMode = 'harian';   // harian | mingguan | bulanan
 let currentStatTab   = 'global';     // global | individu
 let lastLaporanData  = null;         // untuk cetak ulang
+let cachedHariLibur  = null;         // { libur: bool, keterangan: string } — di-cache dari API
 
 // ============================================================
 // FULLSCREEN
@@ -167,10 +168,12 @@ function navigateTo(pageId) {
   document.querySelectorAll('[data-nav="'+pageId+'"]').forEach(function(n){n.classList.add('active');});
 
   if(pageId==='home')      loadPresensiHariIni();
-  if(pageId==='manual')    loadGuruDropdown('select-guru-manual');
-  if(pageId==='pulang')    loadGuruDropdown('select-guru-pulang');
+  if(pageId==='manual')    { loadGuruDropdown('select-guru-manual');  updateLiburBadgeAll(cachedHariLibur); }
+  if(pageId==='pulang')    { loadGuruDropdown('select-guru-pulang');  updateLiburBadgeAll(cachedHariLibur); }
+  if(pageId==='scan')      updateLiburBadgeAll(cachedHariLibur);
   if(pageId==='laporan')   initLaporanPage();
   if(pageId==='statistik') initStatistikPage();
+  if(pageId==='libur')     initLiburPage();
 }
 
 // ============================================================
@@ -218,7 +221,11 @@ async function loadPresensiHariIni() {
     if(elTahunAjaran&&data.tahunAjaran) {
       elTahunAjaran.textContent='TAHUN PELAJARAN '+data.tahunAjaran;
     }
-    
+
+    // Tampilkan / sembunyikan badge hari libur
+    cachedHariLibur = { libur: !!data.hariLibur, keterangan: data.keteranganLibur || '' };
+    updateLiburBadgeAll(cachedHariLibur);
+
     const elK=document.getElementById('cetak-nama-kepsek');
     if(elK&&!elK.value&&data.namaKepsek) elK.value=data.namaKepsek;
 
@@ -286,6 +293,71 @@ function noUrlHtml(){
     '<p style="font-weight:700;color:var(--text);margin-bottom:8px">URL API belum dikonfigurasi</p>'+
     '<p style="font-size:.82rem;margin-bottom:16px">Login sebagai admin lalu buka Pengaturan API.</p>'+
     '<button class="btn btn-primary" style="width:auto;padding:10px 24px" onclick="requireAdmin(openSettingModal)">⚙️ Buka Pengaturan</button></div>';
+}
+
+// ============================================================
+// BADGE HARI LIBUR — update semua elemen sekaligus
+// info: { libur: bool, keterangan: string }
+// ============================================================
+function updateLiburBadgeAll(info) {
+  // Cek hari Minggu secara lokal jika info belum ada
+  if (!info) {
+    var hari = new Date().getDay();
+    info = hari === 0
+      ? { libur: true, keterangan: 'Hari Minggu — Hari Libur' }
+      : { libur: false, keterangan: '' };
+  }
+
+  // 1. Banner di date-banner halaman home
+  var bannerHome = document.getElementById('libur-banner');
+  var bannerText = document.getElementById('libur-banner-text');
+  if (bannerHome) {
+    if (info.libur) {
+      bannerHome.style.display = 'flex';
+      if (bannerText) bannerText.textContent = info.keterangan || 'Hari Libur';
+    } else {
+      bannerHome.style.display = 'none';
+    }
+  }
+
+  // 2. Banner di halaman scan
+  var bannerScan = document.getElementById('scan-libur-banner');
+  var bannerScanText = document.getElementById('scan-libur-text');
+  if (bannerScan) {
+    if (info.libur) {
+      bannerScan.style.display = 'flex';
+      if (bannerScanText) bannerScanText.textContent =
+        '🚫 Hari ini libur: ' + (info.keterangan || 'Hari Libur') + '. Absen tidak tersedia.';
+    } else {
+      bannerScan.style.display = 'none';
+    }
+  }
+
+  // 3. Banner di halaman manual
+  var bannerManual = document.getElementById('manual-libur-banner');
+  var bannerManualText = document.getElementById('manual-libur-text');
+  if (bannerManual) {
+    if (info.libur) {
+      bannerManual.style.display = 'flex';
+      if (bannerManualText) bannerManualText.textContent =
+        '🚫 Hari ini libur: ' + (info.keterangan || 'Hari Libur') + '. Absen tidak tersedia.';
+    } else {
+      bannerManual.style.display = 'none';
+    }
+  }
+
+  // 4. Banner di halaman pulang
+  var bannerPulang = document.getElementById('pulang-libur-banner');
+  var bannerPulangText = document.getElementById('pulang-libur-text');
+  if (bannerPulang) {
+    if (info.libur) {
+      bannerPulang.style.display = 'flex';
+      if (bannerPulangText) bannerPulangText.textContent =
+        '🚫 Hari ini libur: ' + (info.keterangan || 'Hari Libur') + '. Absen tidak tersedia.';
+    } else {
+      bannerPulang.style.display = 'none';
+    }
+  }
 }
 
 // ============================================================
@@ -1269,6 +1341,12 @@ function updateAdminUI(){
   // Tombol debug statistik (hanya admin)
   const db=document.getElementById('stat-debug-bar');
   if(db) db.style.display=isAdminLoggedIn?'block':'none';
+
+  // Refresh halaman libur jika sedang aktif (form & tombol aksi ikut berubah)
+  var pageLibur = document.getElementById('page-libur');
+  if (pageLibur && pageLibur.classList.contains('active')) {
+    initLiburPage();
+  }
 }
 function togglePasswordVisibility(inputId){
   const inp=document.getElementById(inputId); if(!inp)return;
@@ -1309,11 +1387,233 @@ function saveApiUrl(){
 }
 
 // ============================================================
+// HALAMAN HARI LIBUR
+// ============================================================
+
+// Nama hari Indonesia untuk tampilan
+const NAMA_HARI_ID = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+const NAMA_BULAN_ID = ['Januari','Februari','Maret','April','Mei','Juni',
+                       'Juli','Agustus','September','Oktober','November','Desember'];
+
+function initLiburPage() {
+  // Halaman ini terbuka untuk semua (tamu & admin)
+  // Tamu: hanya lihat daftar | Admin: full CRUD
+  var formCard  = document.getElementById('libur-form-card');
+  var pageTitle = document.getElementById('libur-page-title');
+  var pageSub   = document.getElementById('libur-page-sub');
+
+  if (isAdminLoggedIn) {
+    if (formCard)  formCard.style.display = 'block';
+    if (pageTitle) pageTitle.innerHTML    = '&#x1F4C5; Kelola Hari Libur';
+    if (pageSub)   pageSub.textContent    = 'Database hari libur nasional & hari Minggu otomatis libur';
+  } else {
+    if (formCard)  formCard.style.display = 'none';
+    if (pageTitle) pageTitle.innerHTML    = '&#x1F4C5; Daftar Hari Libur';
+    if (pageSub)   pageSub.textContent    = 'Hari Minggu otomatis libur & hari libur nasional';
+  }
+
+  loadDaftarLibur();
+}
+
+async function loadDaftarLibur() {
+  const container = document.getElementById('libur-list-container');
+  if (!container) return;
+  container.innerHTML = loadingHtml('Memuat daftar hari libur...');
+  try {
+    const data = await apiCall('getHariLibur');
+    if (!data.success) throw new Error(data.message);
+    renderDaftarLibur(data.data || []);
+  } catch (e) {
+    // Jika URL belum dikonfigurasi, tampilkan pesan ramah tanpa meminta login
+    if (e.message === '__NO_URL__') {
+      container.innerHTML =
+        '<div class="empty-state">' +
+          '<div class="empty-icon">&#x1F4C5;</div>' +
+          '<p style="font-weight:700;color:var(--text);margin-bottom:6px">Data belum tersedia</p>' +
+          '<p style="font-size:.82rem;color:var(--text-muted)">Sistem belum terhubung ke server.</p>' +
+        '</div>';
+      return;
+    }
+    container.innerHTML =
+      '<div class="empty-state"><div class="empty-icon">⚠️</div>' +
+      '<p style="color:var(--danger);margin-bottom:10px">' + e.message + '</p>' +
+      '<button class="btn btn-outline btn-sm" onclick="loadDaftarLibur()">&#x1F504; Coba Lagi</button></div>';
+  }
+}
+
+function renderDaftarLibur(list) {
+  const container = document.getElementById('libur-list-container');
+  if (!container) return;
+  if (!list.length) {
+    container.innerHTML =
+      '<div class="empty-state"><div class="empty-icon">📅</div>' +
+      '<p>Belum ada hari libur yang ditambahkan.</p></div>';
+    return;
+  }
+  var html = '<div class="libur-list">';
+  list.forEach(function(item) {
+    var parts = item.tanggal.split('-');
+    var tglObj = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+    var namaHari   = NAMA_HARI_ID[tglObj.getDay()];
+    var tglPanjang = namaHari + ', ' + parseInt(parts[0]) + ' ' +
+                     NAMA_BULAN_ID[parseInt(parts[1]) - 1] + ' ' + parts[2];
+    var tglEsc = item.tanggal.replace(/'/g, "\\'");
+    var ketEsc = item.keterangan.replace(/'/g, "\\'");
+
+    // Tombol aksi hanya untuk admin
+    var actionsHtml = isAdminLoggedIn
+      ? '<div class="libur-item-actions">' +
+          '<button class="btn-edit-libur" ' +
+            'onclick="openEditLiburModal(\'' + tglEsc + '\',\'' + ketEsc + '\')" ' +
+            'title="Edit">&#x270F;&#xFE0F;</button>' +
+          '<button class="btn-hapus-libur" ' +
+            'onclick="hapusHariLibur(\'' + tglEsc + '\',\'' + ketEsc + '\')" ' +
+            'title="Hapus">&#x1F5D1;</button>' +
+        '</div>'
+      : '';
+
+    html +=
+      '<div class="libur-item">' +
+        '<div class="libur-item-info">' +
+          '<div class="libur-tanggal">' +
+            '<span class="libur-badge-hari">' + namaHari + '</span>' +
+            '<span class="libur-tgl-text">' + tglPanjang + '</span>' +
+          '</div>' +
+          '<div class="libur-keterangan">' + item.keterangan + '</div>' +
+        '</div>' +
+        actionsHtml +
+      '</div>';
+  });
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+async function tambahHariLibur() {
+  const inputTgl = document.getElementById('input-libur-tanggal');
+  const inputKet = document.getElementById('input-libur-keterangan');
+  const btn      = document.getElementById('btn-tambah-libur');
+  if (!inputTgl || !inputKet) return;
+
+  const tglVal = inputTgl.value.trim();
+  const ketVal = inputKet.value.trim();
+
+  if (!tglVal) { showToast('Pilih tanggal terlebih dahulu', 'warning'); return; }
+  if (!ketVal) { showToast('Isi keterangan hari libur', 'warning'); return; }
+
+  // Konversi dari YYYY-MM-DD (input[type=date]) ke DD-MM-YYYY
+  var parts = tglVal.split('-');
+  var tglID = parts[2] + '-' + parts[1] + '-' + parts[0];
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Menyimpan...';
+  try {
+    const data = await apiCall('tambahHariLibur', { tanggal: tglID, keterangan: ketVal });
+    if (data.success) {
+      showToast(data.message, 'success');
+      inputTgl.value = '';
+      inputKet.value = '';
+      loadDaftarLibur();
+    } else {
+      showToast(data.message, 'error');
+    }
+  } catch (e) {
+    showToast(e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '&#x2795; Tambah Hari Libur';
+  }
+}
+
+async function hapusHariLibur(tanggal, keterangan) {
+  if (!confirm('Hapus hari libur:\n' + tanggal + ' — ' + keterangan + '\n\nLanjutkan?')) return;
+  try {
+    const data = await apiCall('hapusHariLibur', { tanggal: tanggal });
+    if (data.success) {
+      showToast(data.message, 'success');
+      loadDaftarLibur();
+    } else {
+      showToast(data.message, 'error');
+    }
+  } catch (e) {
+    showToast(e.message, 'error');
+  }
+}
+
+// Buka modal edit — isi field dengan data yang ada
+function openEditLiburModal(tanggal, keterangan) {
+  var inputTgl = document.getElementById('edit-libur-tanggal');
+  var inputKet = document.getElementById('edit-libur-keterangan');
+  var inputLama = document.getElementById('edit-libur-tanggal-lama');
+  if (!inputTgl || !inputKet || !inputLama) return;
+
+  // Simpan tanggal lama sebagai referensi
+  inputLama.value = tanggal;
+
+  // Konversi DD-MM-YYYY → YYYY-MM-DD untuk input[type=date]
+  var parts = tanggal.split('-');
+  inputTgl.value = parts[2] + '-' + parts[1] + '-' + parts[0];
+  inputKet.value = keterangan;
+
+  var modal = document.getElementById('modal-edit-libur');
+  if (modal) modal.classList.add('show');
+}
+
+function closeEditLiburModal() {
+  var modal = document.getElementById('modal-edit-libur');
+  if (modal) modal.classList.remove('show');
+}
+
+async function submitEditLibur() {
+  var inputTgl  = document.getElementById('edit-libur-tanggal');
+  var inputKet  = document.getElementById('edit-libur-keterangan');
+  var inputLama = document.getElementById('edit-libur-tanggal-lama');
+  var btn       = document.getElementById('btn-submit-edit-libur');
+  if (!inputTgl || !inputKet || !inputLama) return;
+
+  var tglVal  = inputTgl.value.trim();
+  var ketVal  = inputKet.value.trim();
+  var tglLama = inputLama.value.trim();
+
+  if (!tglVal) { showToast('Pilih tanggal', 'warning'); return; }
+  if (!ketVal) { showToast('Isi keterangan', 'warning'); return; }
+
+  // Konversi YYYY-MM-DD → DD-MM-YYYY
+  var p = tglVal.split('-');
+  var tglBaru = p[2] + '-' + p[1] + '-' + p[0];
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Menyimpan...';
+  try {
+    const data = await apiCall('updateHariLibur', {
+      tanggalLama: tglLama,
+      tanggalBaru: tglBaru,
+      keterangan:  ketVal
+    });
+    if (data.success) {
+      showToast(data.message, 'success');
+      closeEditLiburModal();
+      loadDaftarLibur();
+    } else {
+      showToast(data.message, 'error');
+    }
+  } catch (e) {
+    showToast(e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '&#x1F4BE; Simpan Perubahan';
+  }
+}
+
+// ============================================================
 // INISIALISASI
 // ============================================================
 document.addEventListener('DOMContentLoaded',function(){
   startClock();
   updateAdminUI();   // restore tampilan nav sesuai status session
+
+  // Cek hari Minggu secara lokal sebelum API selesai (fallback cepat)
+  updateLiburBadgeAll(null);
+
   navigateTo('home');
 
   // Event listener untuk perubahan fullscreen

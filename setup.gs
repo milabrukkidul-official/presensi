@@ -16,6 +16,7 @@
 const SHEET_GURU     = 'DATA_GURU';
 const SHEET_PRESENSI = 'PRESENSI';
 const SHEET_SETTING  = 'SETTING';
+const SHEET_LIBUR    = 'HARI_LIBUR';
 
 // ============================================================
 // SETUP AWAL SPREADSHEET
@@ -107,10 +108,47 @@ function setupSpreadsheet() {
   sheetSetting.setColumnWidth(2, 250);
   sheetSetting.setColumnWidth(3, 300);
 
+  // --- Sheet HARI_LIBUR ---
+  let sheetLibur = ss.getSheetByName(SHEET_LIBUR);
+  if (!sheetLibur) sheetLibur = ss.insertSheet(SHEET_LIBUR);
+  sheetLibur.clearContents();
+
+  const headerLibur = [['NO', 'TANGGAL', 'KETERANGAN']];
+  sheetLibur.getRange(1, 1, 1, 3).setValues(headerLibur);
+  sheetLibur.getRange(1, 1, 1, 3)
+    .setBackground('#e53935')
+    .setFontColor('#ffffff')
+    .setFontWeight('bold')
+    .setHorizontalAlignment('center');
+  sheetLibur.setColumnWidth(1, 60);
+  sheetLibur.setColumnWidth(2, 150);
+  sheetLibur.setColumnWidth(3, 300);
+
+  // Contoh data hari libur nasional 2025/2026 (format DD-MM-YYYY)
+  const contohLibur = [
+    [1,  '01-01-2026', 'Tahun Baru Masehi'],
+    [2,  '28-01-2026', 'Tahun Baru Imlek 2577'],
+    [3,  '20-03-2026', 'Hari Raya Nyepi (Tahun Baru Saka 1948)'],
+    [4,  '02-04-2026', 'Wafat Isa Al Masih'],
+    [5,  '20-04-2026', 'Hari Raya Idul Fitri 1447 H'],
+    [6,  '21-04-2026', 'Hari Raya Idul Fitri 1447 H (Hari Kedua)'],
+    [7,  '01-05-2026', 'Hari Buruh Internasional'],
+    [8,  '14-05-2026', 'Kenaikan Isa Al Masih'],
+    [9,  '16-05-2026', 'Hari Raya Waisak 2570 BE'],
+    [10, '01-06-2026', 'Hari Lahir Pancasila'],
+    [11, '27-06-2026', 'Hari Raya Idul Adha 1447 H'],
+    [12, '17-07-2026', 'Tahun Baru Islam 1448 H'],
+    [13, '17-08-2026', 'Hari Kemerdekaan Republik Indonesia'],
+    [14, '25-09-2026', 'Maulid Nabi Muhammad SAW'],
+    [15, '25-12-2026', 'Hari Raya Natal'],
+  ];
+  sheetLibur.getRange(2, 1, contohLibur.length, 3).setValues(contohLibur);
+
   // Freeze header semua sheet
   sheetGuru.setFrozenRows(1);
   sheetPresensi.setFrozenRows(1);
   sheetSetting.setFrozenRows(1);
+  sheetLibur.setFrozenRows(1);
 
   // Aktifkan sheet pertama
   ss.setActiveSheet(sheetGuru);
@@ -118,9 +156,10 @@ function setupSpreadsheet() {
   SpreadsheetApp.getUi().alert(
     '✅ Setup Berhasil!\n\n' +
     'Sheet yang dibuat:\n' +
-    '• DATA_GURU - Data master guru\n' +
-    '• PRESENSI  - Rekap presensi harian\n' +
-    '• SETTING   - Konfigurasi sistem\n\n' +
+    '• DATA_GURU   - Data master guru\n' +
+    '• PRESENSI    - Rekap presensi harian\n' +
+    '• SETTING     - Konfigurasi sistem\n' +
+    '• HARI_LIBUR  - Database hari libur nasional\n\n' +
     'Pengaturan jam di sheet SETTING:\n' +
     '• JAM_MASUK_AWAL   = 05:30 (mulai bisa absen masuk)\n' +
     '• JAM_MASUK_NORMAL = 07:00 (batas tidak terlambat)\n' +
@@ -302,6 +341,12 @@ function absenMasuk(idBarcode) {
     const jamParts = jam.split(':');
     const menitNow = parseInt(jamParts[0]) * 60 + parseInt(jamParts[1]);
 
+    // Cek hari libur & Minggu
+    const pesanLibur = cekBolehAbsen(tanggal);
+    if (pesanLibur) {
+      return { success: false, message: pesanLibur, hariLibur: true };
+    }
+
     // Cari data guru
     const guru = cariGuru(idBarcode);
     if (!guru) {
@@ -385,6 +430,12 @@ function absenPulang(idBarcode) {
     // Ambil jam & menit dari formatJamIndonesia (sudah timezone-aware)
     const jamParts = jam.split(':');
     const menitNow = parseInt(jamParts[0]) * 60 + parseInt(jamParts[1]);
+
+    // Cek hari libur & Minggu
+    const pesanLibur = cekBolehAbsen(tanggal);
+    if (pesanLibur) {
+      return { success: false, message: pesanLibur, hariLibur: true };
+    }
 
     const guru = cariGuru(idBarcode);
     if (!guru) {
@@ -495,6 +546,12 @@ function absenManual(idBarcode, keterangan) {
     const tanggal = formatTanggalIndonesia(now);
     const jam     = formatJamIndonesia(now);
 
+    // Cek hari libur & Minggu
+    const pesanLibur = cekBolehAbsen(tanggal);
+    if (pesanLibur) {
+      return { success: false, message: pesanLibur, hariLibur: true };
+    }
+
     const statusMap = { 'IJIN': 'IJIN', 'SAKIT': 'SAKIT', 'ALPA': 'ALPA' };
     const status    = statusMap[keterangan.toUpperCase()] || 'ALPA';
 
@@ -596,6 +653,17 @@ function getPresensiHariIni() {
     const jamPulangAwal  = getSetting('JAM_PULANG_AWAL')   || '09:00';
     const jamPulangAkhir = getSetting('JAM_PULANG_AKHIR')  || '17:00';
 
+    // Cek hari libur / Minggu untuk badge di UI
+    var infoLibur = { libur: false, keterangan: '' };
+    if (isHariMinggu(tanggal)) {
+      infoLibur = { libur: true, keterangan: 'Hari Minggu — Hari Libur' };
+    } else {
+      var cekLiburHariIni = cekHariLibur(tanggal);
+      if (cekLiburHariIni.libur) {
+        infoLibur = { libur: true, keterangan: cekLiburHariIni.keterangan };
+      }
+    }
+
     return {
       success:      true,
       tanggal:      tanggal,
@@ -608,6 +676,8 @@ function getPresensiHariIni() {
       jamMasukNormal:  jamMasukNormal,
       jamPulangAwal:   jamPulangAwal,
       jamPulangAkhir:  jamPulangAkhir,
+      hariLibur:       infoLibur.libur,
+      keteranganLibur: infoLibur.keterangan,
       guru:         result
     };
   } catch (e) {
@@ -669,8 +739,189 @@ function parseTanggalSheet(val) {
 }
 
 // ============================================================
-// AMBIL STATISTIK (global / individu per bulan)
+// HELPER: CEK HARI MINGGU
+// Mengembalikan true jika tanggal (DD-MM-YYYY) adalah hari Minggu
 // ============================================================
+function isHariMinggu(tanggalStr) {
+  var parts = tanggalStr.split('-');
+  if (parts.length < 3) return false;
+  var d = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+  return d.getDay() === 0; // 0 = Minggu
+}
+
+// ============================================================
+// HELPER: CEK HARI LIBUR NASIONAL
+// Mengembalikan objek { libur: true, keterangan: '...' }
+// atau { libur: false } jika bukan hari libur
+// ============================================================
+function cekHariLibur(tanggalStr) {
+  try {
+    const ss    = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName(SHEET_LIBUR);
+    if (!sheet) return { libur: false };
+    const data = sheet.getDataRange().getValues();
+    for (var i = 1; i < data.length; i++) {
+      if (!data[i][1]) continue;
+      var tglLibur = parseTanggalSheet(data[i][1]);
+      if (tglLibur === tanggalStr) {
+        return { libur: true, keterangan: String(data[i][2] || 'Hari Libur') };
+      }
+    }
+    return { libur: false };
+  } catch (e) {
+    return { libur: false };
+  }
+}
+
+// ============================================================
+// HELPER: CEK APAKAH HARI INI BISA ABSEN
+// Mengembalikan null jika boleh absen,
+// atau string pesan error jika tidak boleh
+// ============================================================
+function cekBolehAbsen(tanggalStr) {
+  // Cek hari Minggu
+  if (isHariMinggu(tanggalStr)) {
+    return 'Hari Minggu adalah hari libur, absen tidak tersedia.';
+  }
+  // Cek hari libur nasional
+  var cekLibur = cekHariLibur(tanggalStr);
+  if (cekLibur.libur) {
+    return 'Hari ini adalah hari libur: ' + cekLibur.keterangan + '. Absen tidak tersedia.';
+  }
+  return null; // boleh absen
+}
+
+// ============================================================
+// CRUD HARI LIBUR
+// ============================================================
+
+// Ambil semua data hari libur
+function getHariLibur() {
+  try {
+    const ss    = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName(SHEET_LIBUR);
+    if (!sheet) return { success: false, message: 'Sheet HARI_LIBUR tidak ditemukan.' };
+    const data   = sheet.getDataRange().getValues();
+    const result = [];
+    for (var i = 1; i < data.length; i++) {
+      if (!data[i][1]) continue;
+      result.push({
+        row:         i + 1,
+        no:          data[i][0],
+        tanggal:     parseTanggalSheet(data[i][1]),
+        keterangan:  String(data[i][2] || '')
+      });
+    }
+    // Urutkan berdasarkan tanggal
+    result.sort(function(a, b) {
+      var pa = a.tanggal.split('-'); var pb = b.tanggal.split('-');
+      var da = new Date(parseInt(pa[2]), parseInt(pa[1])-1, parseInt(pa[0]));
+      var db = new Date(parseInt(pb[2]), parseInt(pb[1])-1, parseInt(pb[0]));
+      return da - db;
+    });
+    return { success: true, data: result };
+  } catch (e) {
+    return { success: false, message: e.message };
+  }
+}
+
+// Tambah hari libur baru
+function tambahHariLibur(tanggal, keterangan) {
+  try {
+    if (!tanggal) return { success: false, message: 'Tanggal tidak boleh kosong.' };
+    if (!keterangan) return { success: false, message: 'Keterangan tidak boleh kosong.' };
+
+    // Normalisasi format: terima DD-MM-YYYY atau YYYY-MM-DD
+    var tglNormal = parseTanggalSheet(tanggal);
+    if (!tglNormal || !/^\d{2}-\d{2}-\d{4}$/.test(tglNormal)) {
+      return { success: false, message: 'Format tanggal tidak valid. Gunakan DD-MM-YYYY.' };
+    }
+
+    // Cek duplikat
+    var existing = cekHariLibur(tglNormal);
+    if (existing.libur) {
+      return { success: false, message: 'Tanggal ' + tglNormal + ' sudah ada: ' + existing.keterangan };
+    }
+
+    const ss    = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName(SHEET_LIBUR);
+    const lastRow = sheet.getLastRow();
+    const no      = lastRow; // baris 1 = header
+    sheet.appendRow([no, tglNormal, keterangan]);
+    SpreadsheetApp.flush();
+
+    return { success: true, message: 'Hari libur ' + tglNormal + ' berhasil ditambahkan.', tanggal: tglNormal };
+  } catch (e) {
+    return { success: false, message: e.message };
+  }
+}
+
+// Hapus hari libur berdasarkan tanggal
+function hapusHariLibur(tanggal) {
+  try {
+    var tglNormal = parseTanggalSheet(tanggal);
+    const ss    = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName(SHEET_LIBUR);
+    const data  = sheet.getDataRange().getValues();
+    for (var i = data.length - 1; i >= 1; i--) {
+      if (!data[i][1]) continue;
+      if (parseTanggalSheet(data[i][1]) === tglNormal) {
+        sheet.deleteRow(i + 1);
+        SpreadsheetApp.flush();
+        return { success: true, message: 'Hari libur ' + tglNormal + ' berhasil dihapus.' };
+      }
+    }
+    return { success: false, message: 'Tanggal ' + tglNormal + ' tidak ditemukan di daftar libur.' };
+  } catch (e) {
+    return { success: false, message: e.message };
+  }
+}
+
+// Update (edit) hari libur — ganti tanggal lama dengan tanggal & keterangan baru
+function updateHariLibur(tanggalLama, tanggalBaru, keteranganBaru) {
+  try {
+    if (!tanggalLama) return { success: false, message: 'Tanggal lama tidak boleh kosong.' };
+    if (!tanggalBaru) return { success: false, message: 'Tanggal baru tidak boleh kosong.' };
+    if (!keteranganBaru) return { success: false, message: 'Keterangan tidak boleh kosong.' };
+
+    var tglLamaNormal = parseTanggalSheet(tanggalLama);
+    var tglBaruNormal = parseTanggalSheet(tanggalBaru);
+
+    if (!tglBaruNormal || !/^\d{2}-\d{2}-\d{4}$/.test(tglBaruNormal)) {
+      return { success: false, message: 'Format tanggal baru tidak valid. Gunakan DD-MM-YYYY.' };
+    }
+
+    const ss    = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName(SHEET_LIBUR);
+    const data  = sheet.getDataRange().getValues();
+
+    // Cek duplikat tanggal baru (kecuali jika tanggal tidak berubah)
+    if (tglBaruNormal !== tglLamaNormal) {
+      var duplikat = cekHariLibur(tglBaruNormal);
+      if (duplikat.libur) {
+        return { success: false, message: 'Tanggal ' + tglBaruNormal + ' sudah ada: ' + duplikat.keterangan };
+      }
+    }
+
+    for (var i = 1; i < data.length; i++) {
+      if (!data[i][1]) continue;
+      if (parseTanggalSheet(data[i][1]) === tglLamaNormal) {
+        sheet.getRange(i + 1, 2).setValue(tglBaruNormal);
+        sheet.getRange(i + 1, 3).setValue(keteranganBaru);
+        SpreadsheetApp.flush();
+        return {
+          success: true,
+          message: 'Hari libur berhasil diperbarui: ' + tglBaruNormal + ' — ' + keteranganBaru
+        };
+      }
+    }
+    return { success: false, message: 'Tanggal ' + tglLamaNormal + ' tidak ditemukan di daftar libur.' };
+  } catch (e) {
+    return { success: false, message: e.message };
+  }
+}
+
+
 function getStatistik(tipe, params) {
   try {
     const ss        = SpreadsheetApp.getActiveSpreadsheet();
@@ -1115,6 +1366,31 @@ function doGet(e) {
       case 'debugPresensi':
         result = debugPresensi();
         break;
+      case 'getHariLibur':
+        result = getHariLibur();
+        break;
+      case 'tambahHariLibur':
+        result = tambahHariLibur(e.parameter.tanggal, e.parameter.keterangan);
+        break;
+      case 'hapusHariLibur':
+        result = hapusHariLibur(e.parameter.tanggal);
+        break;
+      case 'updateHariLibur':
+        result = updateHariLibur(
+          e.parameter.tanggalLama,
+          e.parameter.tanggalBaru,
+          e.parameter.keterangan
+        );
+        break;
+      case 'cekHariLiburHariIni':
+        result = (function() {
+          var tgl = formatTanggalIndonesia(new Date());
+          var pesan = cekBolehAbsen(tgl);
+          return pesan
+            ? { success: true, libur: true,  tanggal: tgl, pesan: pesan }
+            : { success: true, libur: false, tanggal: tgl };
+        })();
+        break;
       default:
         result = { success: false, message: 'Action tidak dikenal: ' + action };
     }
@@ -1178,6 +1454,31 @@ function doPost(e) {
           tahun:     params.tahun     || '',
           idBarcode: params.idBarcode || ''
         });
+        break;
+      case 'getHariLibur':
+        result = getHariLibur();
+        break;
+      case 'tambahHariLibur':
+        result = tambahHariLibur(params.tanggal, params.keterangan);
+        break;
+      case 'hapusHariLibur':
+        result = hapusHariLibur(params.tanggal);
+        break;
+      case 'updateHariLibur':
+        result = updateHariLibur(
+          params.tanggalLama,
+          params.tanggalBaru,
+          params.keterangan
+        );
+        break;
+      case 'cekHariLiburHariIni':
+        result = (function() {
+          var tgl = formatTanggalIndonesia(new Date());
+          var pesan = cekBolehAbsen(tgl);
+          return pesan
+            ? { success: true, libur: true,  tanggal: tgl, pesan: pesan }
+            : { success: true, libur: false, tanggal: tgl };
+        })();
         break;
       default:
         result = { success: false, message: 'Action tidak dikenal: ' + action };

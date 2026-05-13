@@ -51,6 +51,10 @@
     <div id="clock-hari" class="hari">Memuat...</div>
     <div id="clock-jam" class="jam">--:--:--</div>
     <div id="clock-tahun-ajaran" class="tahun-ajaran">TAHUN PELAJARAN --</div>
+    <div id="libur-banner" class="libur-banner" style="display:none">
+      <span class="libur-banner-icon">&#x1F6AB;</span>
+      <span id="libur-banner-text">Hari Libur</span>
+    </div>
   </div>
   <div id="stats-container" class="stats-row">
     <div class="stat-card stat-hadir"><div class="stat-num">-</div><div class="stat-label">Hadir</div></div>
@@ -85,6 +89,11 @@
         <h2>&#x1F4F7; Scan Barcode</h2>
         <p>Arahkan kamera ke barcode kartu guru</p>
       </div>
+      <!-- Banner hari libur di halaman scan -->
+      <div id="scan-libur-banner" class="scan-libur-banner" style="display:none">
+        <span>&#x1F6AB;</span>
+        <span id="scan-libur-text">Hari ini adalah hari libur. Absen tidak tersedia.</span>
+      </div>
       <div class="scan-mode-tabs">
         <button class="scan-tab active" data-scan-mode="masuk">&#x1F7E2; Absen Masuk</button>
         <button class="scan-tab" data-scan-mode="pulang">&#x1F535; Absen Pulang</button>
@@ -109,6 +118,10 @@
   <div class="manual-page">
     <div class="manual-card">
       <h3>&#x1F4DD; Absen Manual</h3>
+      <div id="manual-libur-banner" class="form-libur-banner" style="display:none">
+        <span>&#x1F6AB;</span>
+        <span id="manual-libur-text">Hari ini adalah hari libur.</span>
+      </div>
       <div class="form-group">
         <label class="form-label">Pilih Guru</label>
         <select id="select-guru-manual" class="form-control">
@@ -148,6 +161,10 @@
   <div class="pulang-page">
     <div class="manual-card">
       <h3>&#x1F3E0; Absen Kepulangan</h3>
+      <div id="pulang-libur-banner" class="form-libur-banner" style="display:none">
+        <span>&#x1F6AB;</span>
+        <span id="pulang-libur-text">Hari ini adalah hari libur.</span>
+      </div>
       <div class="info-box-blue">
         <span>&#x2139;&#xFE0F;</span>
         <span>Hanya guru yang sudah absen masuk dan belum pulang yang ditampilkan.</span>
@@ -325,16 +342,64 @@
 </div>
 
 <!-- ================================================================
+     HALAMAN HARI LIBUR (tamu: lihat saja, admin: full CRUD)
+     ================================================================ -->
+<div id="page-libur" class="page">
+  <div class="laporan-page">
+    <div class="laporan-header-card">
+      <div id="libur-page-title" class="laporan-header-title">&#x1F4C5; Daftar Hari Libur</div>
+      <div id="libur-page-sub" class="laporan-header-sub">Hari Minggu otomatis libur &amp; hari libur nasional</div>
+    </div>
+
+    <!-- Info hari Minggu -->
+    <div class="info-box-blue" style="margin-bottom:12px">
+      <span>&#x2139;&#xFE0F;</span>
+      <span><strong>Hari Minggu</strong> otomatis dianggap libur — absen tidak dapat dilakukan.</span>
+    </div>
+
+    <!-- Form tambah hari libur (hanya admin) -->
+    <div class="manual-card" id="libur-form-card" style="display:none">
+      <h3>&#x2795; Tambah Hari Libur</h3>
+      <div class="form-group">
+        <label class="form-label">Tanggal (format: DD-MM-YYYY)</label>
+        <input type="date" id="input-libur-tanggal" class="form-control">
+        <div style="font-size:.75rem;color:var(--text-muted);margin-top:4px">
+          Contoh: 01-05-2026 (1 Mei 2026)
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Keterangan</label>
+        <input type="text" id="input-libur-keterangan" class="form-control"
+               placeholder="Contoh: Hari Buruh Internasional"
+               maxlength="100">
+      </div>
+      <button id="btn-tambah-libur" class="btn btn-primary" onclick="tambahHariLibur()">
+        &#x2795; Tambah Hari Libur
+      </button>
+    </div>
+
+    <!-- Daftar hari libur -->
+    <div class="section-title" style="margin-top:8px">&#x1F4CB; Daftar Hari Libur</div>
+    <div id="libur-list-container">
+      <div class="empty-state">
+        <div class="spinner spinner-dark" style="margin:0 auto 12px;"></div>
+        <p>Memuat data...</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================
      BOTTOM NAVIGATION — TAMU (default)
      ================================================================ -->
 <nav class="bottom-nav" id="nav-tamu">
+  <button class="nav-item" data-nav="libur">
+    <span class="nav-icon">&#x1F4C5;</span>
+    <span>Hari Libur</span>
+  </button>
   <button class="nav-item active" data-nav="home">
     <span class="nav-icon">&#x1F3E0;</span>
     <span>Beranda</span>
-  </button>
-  <button class="nav-item" data-nav="laporan">
-    <span class="nav-icon">&#x1F4CA;</span>
-    <span>Laporan</span>
   </button>
   <button class="nav-item" data-nav="statistik">
     <span class="nav-icon">&#x1F4C8;</span>
@@ -410,6 +475,10 @@
       <button class="admin-menu-item" onclick="closeAdminMenu();navigateTo('statistik')">
         <span class="admin-menu-icon">&#x1F4C8;</span>
         <span class="admin-menu-label">Statistik</span>
+      </button>
+      <button class="admin-menu-item" onclick="closeAdminMenu();navigateTo('libur')">
+        <span class="admin-menu-icon">&#x1F4C5;</span>
+        <span class="admin-menu-label">Hari Libur</span>
       </button>
       <button class="admin-menu-item" onclick="closeAdminMenu();navigateTo('home')">
         <span class="admin-menu-icon">&#x1F3E0;</span>
@@ -495,6 +564,33 @@
       <button class="btn btn-outline" onclick="closeCetakModal()" style="flex:1">Batal</button>
       <button class="btn btn-success" id="btn-do-cetak" onclick="doCetakLaporan()" style="flex:1">
         &#x1F5A8; Cetak
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================
+     MODAL: EDIT HARI LIBUR (admin)
+     ================================================================ -->
+<div id="modal-edit-libur" class="modal-overlay" onclick="if(event.target===this)closeEditLiburModal()">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">&#x270F;&#xFE0F; Edit Hari Libur</div>
+    <input type="hidden" id="edit-libur-tanggal-lama">
+    <div class="form-group">
+      <label class="form-label">Tanggal</label>
+      <input type="date" id="edit-libur-tanggal" class="form-control">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Keterangan</label>
+      <input type="text" id="edit-libur-keterangan" class="form-control"
+             placeholder="Contoh: Hari Buruh Internasional"
+             maxlength="100">
+    </div>
+    <div style="display:flex;gap:10px;margin-top:4px">
+      <button class="btn btn-outline" onclick="closeEditLiburModal()" style="flex:1">Batal</button>
+      <button class="btn btn-primary" id="btn-submit-edit-libur" onclick="submitEditLibur()" style="flex:1">
+        &#x1F4BE; Simpan Perubahan
       </button>
     </div>
   </div>
